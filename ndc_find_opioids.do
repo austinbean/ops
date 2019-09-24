@@ -1,4 +1,3 @@
-* hi
 * Tag opioid products in FDA NDC files
 
 global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
@@ -15,6 +14,34 @@ global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 	keep if opi_ind == 1
 	drop opi_ind tropi_ind
 	
+* Fix leading zero problem with short NDC codes
+	split productndc, p("-")
+	gen len1 = strlen(productndc1)
+	gen len2 = strlen(productndc2)
+	* pad the front if the format is to short
+	replace productndc = "0"+productndc if len1 == 4
+	replace productndc = "00"+productndc if len1 == 3
+	replace productndc = "000"+productndc if len1 == 2
+	replace productndc = "0000"+productndc if len1 == 1
+	* pad the end in case it is to short
+	replace productndc = productndc+"0" if len2 == 3
+	replace productndc = productndc+"00" if len2 == 2
+	replace productndc = productndc+"000" if len2 == 1
+	* drop unused
+	drop len1 productndc1 productndc2 
+	gen lentest = strlen(productndc)
+	tab lentest 
+	drop lentest 
+	
+* Generate a list of product NDC's only	
+
+	preserve 
+	duplicates drop productndc, force
+	keep productndc proprietaryname substancename
+	export delimited using "${op_pr}opioid_ndc_list.csv", replace datafmt
+	restore
+*/	
+	
 * active numerator strength and unit have multiple entries per drug
 	split active_numerator_strength, p(";")
 	split active_ingred_unit, p(";")
@@ -30,13 +57,17 @@ global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 	reshape long substancename, i(id) j(ctt)
 	drop if substancename == ""
 	duplicates drop substancename, force
-	* there are 70 unique substances
+	drop id ctt 
+	export delimited using "${op_fp}opioid_ingredient_list.csv", replace
+	restore
+	* there are 70 unique substances in any "opi" class drug
 	* Do we know how much of each ingredient for multi-ingredient drugs?
 		* Yes we do - they are listed in order: substancename, active_numerator_strength, active_ingred_unit
+
+	* There are a few duplicate productndc numbers - frequently the difference is "startmarketdate", at least once  
+	* some other piece of info like DEA schedule is missing in one of them
 	
-	
-	
-	
+
 	
 	
 * package file
