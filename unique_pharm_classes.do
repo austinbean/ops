@@ -44,7 +44,18 @@ drop ctr
 
 sort pharm_cl 
 
+replace pharm_cl = lower(pharm_cl)
+
 save "${op_fp}pharm_class_list.dta", replace
 
+gen tropi = regexm(pharm_cl, "tropi")
+gen gonad = regexm(pharm_cl, "gonad")
 
+gen opi_m = regexm(pharm_cl, "opi")
+drop if tropi == 1
+drop if gonad == 1
+drop gonad tropi
 
+keep if opi_m == 1
+
+save "${op_fp}opioid_class_list.dta", replace
