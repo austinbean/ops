@@ -9,8 +9,10 @@ and this will be only opioids
 
 */
 
-global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
-global op_pr "/Users/austinbean/Desktop/programs/opioids/"
+global locd "tuk39938"
+*global locd "Austin Bean"
+global op_fp "/Users/${locd}/Google Drive/Current Projects/HCCI Opioids/"
+global op_pr "/Users/${locd}/Desktop/programs/opioids/"
 
 
 * product file
