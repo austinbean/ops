@@ -163,48 +163,51 @@ function get_mme_data(x)
 	maxl = 0
 	for i = 1:8
 		println("Loading $i  ", now())
-		f = CSV.read("/Users/tuk39938/Downloads/arcos_chunk$i.csv"; header = 1, limit = 500_000, types=Dict("REPORTER_ZIP"=>String, "BUYER_ZIP"=>String, "TRANSACTION_DATE"=>String , "CALC_BASE_WT_IN_GM"=>Float64, "CALC_BASE_WT_IN_GM"=>Float64))
+		f = CSV.read("/Users/tuk39938/Downloads/arcos_chunk$i.csv"; header = 1,  types=Dict("REPORTER_ZIP"=>String, "BUYER_ZIP"=>String, "TRANSACTION_DATE"=>String , "CALC_BASE_WT_IN_GM"=>Float64, "CALC_BASE_WT_IN_GM"=>Float64))
 		println("Processing $i  ", now())
 		get_mme(f, mk1)
 		f = 0 # drop
 	end
 	println("Writing Output ", now())
 	smth = mme_output(mk1)
-	# println("Saving ", now())
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2006.csv", Tables.table(smth[:,:, 1]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2007.csv", Tables.table(smth[:,:, 2]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2008.csv", Tables.table(smth[:,:, 3]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2009.csv", Tables.table(smth[:,:, 4]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2010.csv", Tables.table(smth[:,:, 5]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2011.csv", Tables.table(smth[:,:, 6]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	# CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2012.csv", Tables.table(smth[:,:, 7]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
-	return smth
+	to_shares(smth)
+	println("Saving ", now())
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2006.csv", Tables.table(smth[:,:, 1]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2007.csv", Tables.table(smth[:,:, 2]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2008.csv", Tables.table(smth[:,:, 3]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2009.csv", Tables.table(smth[:,:, 4]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2010.csv", Tables.table(smth[:,:, 5]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2011.csv", Tables.table(smth[:,:, 6]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
+	CSV.write("/Users/tuk39938/Desktop/programs/ops/yearly_write_test_2012.csv", Tables.table(smth[:,:, 7]); header=["COUNTY", "SUBSTANCE", "YEAR", "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE", "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"])
 end 
 
-
+"""
+`to_shares` iterates
+"""
 function to_shares(arr1::Array)
-	# takes a three dim array and creates shares within columns over blocks of rows 
+	dim3 = size(arr1,3)
 	rows = size(arr1,1)
 	labels = 3
-	i = 1; j = 1;
-	while arr1[i,1] != 0.0
-		str1 = arr1[i, 1] # find the first county name 
-		j = i # reassign j 
-		while (arr1[j,1] == str1)&(arr1[j,1]!=0.0)
-			str_last = j
-			j = j+1
-		end 
-		println(i, " ", j, " ", str1)
-		# TODO - ends up being off by 1.  
-		# TODO - this doesn't end up actually doing anything...?  
-		for mnth = 1:12
-			norm_const = sum(arr1[i:j,mnth+labels])
-			for ix = i:j
-				arr1[ix,mnth+labels] = arr1[ix,mnth+labels]/norm_const
+	for page = 1:dim3
+		i = 1; j = 1;
+		while arr1[i,1, page] != 0.0
+			str1 = arr1[i, 1, page] # find the first county name 
+			j = i+1                  # reassign j 
+			# find where the current county name stops
+			while (arr1[j,1, page] == str1)
+				j+=1 
 			end 
+			# normalize
+			for mnth = 1:12
+				norm_const = sum(arr1[i:(j-1),mnth+labels, page])
+				if norm_const > 0
+					for ix = i:(j-1)
+						arr1[ix,mnth+labels, page] /= norm_const
+					end 	
+				end 
+			end 
+			i = j                   # reassign i -> start at the end of the previous
 		end 
-		i = j #reassign i 
-		i+=1 
 	end 
 end 
 
