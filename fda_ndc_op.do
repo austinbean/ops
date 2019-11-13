@@ -15,6 +15,8 @@ global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
 global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 
 
+
+
 * product file
 	import delimited "${op_fp}ndctext/product.txt", clear 
 *  opioid related:
