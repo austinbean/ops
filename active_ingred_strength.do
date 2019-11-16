@@ -10,7 +10,6 @@
 presentation form matters ->
  https://tenncare.magellanhealth.com/static/docs/Program_Information/TennCare_MME_Conversion_Chart.pdf
 
-<<<<<<< HEAD
 a cdc tool with clinical support in mind:
 
  https://www.cdc.gov/drugoverdose/prescribing/guideline.html#tabs-2-3
@@ -57,7 +56,6 @@ split Generic_Drug_Name, p("/")
 	TODO - figure out the extent to which we can assign MME to substances on the 
 	basis of when it appears in this data.  
 	*/
->>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
 
 
 
@@ -89,12 +87,9 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	keep if opi_ind == 1
 	drop if tropi_ind == 1
 	
-<<<<<<< HEAD
 		
 * Fix leading zero problem with short NDC codes
-=======
 * correct NDC length:
->>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
 	split productndc, p("-")
 	gen len1 = strlen(productndc1)
 	gen len2 = strlen(productndc2)
@@ -112,7 +107,6 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	gen lentest = strlen(productndc)
 	tab lentest 
 	drop lentest 
-<<<<<<< HEAD
 * there are duplicates within NDC but these are mostly new ANDA for the same drug 
 	rename productndc NDC
 	replace NDC = subinstr(NDC, "-", "", .)
@@ -126,7 +120,6 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	merge 1:1 NDC using "${op_fp}opioid_mme_by_ndc.dta"
 	
 * 
-=======
 	gen nd2 = subinstr(productndc, "-", "", . )
 	replace productndc = nd2 
 	drop nd2 
@@ -135,7 +128,6 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	/*
 	TODO - we know what the ingredients are.  We can maybe match that way.
 	*/
->>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
 	
 * split active ingredients.  
 	split active_numerator_strength, p(";")
@@ -159,7 +151,6 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 		drop rr ctr
 		replace substancename = strtrim(substancename)
 		duplicates drop substancename, force
-<<<<<<< HEAD
 		drop if substancename == ""
 	gen mme = 0
 	levelsof substancename, local(nms)
@@ -237,4 +228,3 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 		* there are 71 substance names - that's it.  Maybe that is manageable.  Though there is the problem that these numbers are messed up.  
 
 		
->>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
