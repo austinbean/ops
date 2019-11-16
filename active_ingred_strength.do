@@ -10,13 +10,55 @@
 presentation form matters ->
  https://tenncare.magellanhealth.com/static/docs/Program_Information/TennCare_MME_Conversion_Chart.pdf
 
+<<<<<<< HEAD
 a cdc tool with clinical support in mind:
 
  https://www.cdc.gov/drugoverdose/prescribing/guideline.html#tabs-2-3
 */
+=======
+local whereami = "tuk39938"
+global op_fp "/Users/`whereami'/Google Drive/Current Projects/HCCI Opioids/"
+global op_pr "/Users/`whereami'/Desktop/programs/opioids/"
 
-global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
-global op_pr "/Users/austinbean/Desktop/programs/opioids/"
+		* Import the MME equivalents.
+
+clear
+import excel "${op_fp}CDC_Oral_Morphine_Milligram_Equivalents_Sept_2017.xlsx", sheet("Opioids") firstrow
+destring DEAClassCode, replace
+save "${op_fp}mme_opioids.dta", replace 
+
+clear
+import excel "${op_fp}CDC_Oral_Morphine_Milligram_Equivalents_Sept_2017.xlsx", sheet("Abuse-Deterrent Opioids") firstrow
+destring NDC_Numeric, replace
+append using "${op_fp}mme_opioids.dta"
+
+	* How many product NDC codes have different MME factors at the 9 digit NDC code level?
+gen productndc = substr(NDC, 1, 9)
+bysort productndc: gen ctr = _n 
+bysort productndc: egen countr = max(ctr)
+drop ctr 
+bysort productndc: egen max_mme = max(MME_Conversion_Factor)
+bysort productndc: egen min_mme = min(MME_Conversion_Factor)
+gen d1 = max_mme - min_mme 
+unique MME_Conversion_Factor, by(productndc) gen(mme_count)
+bysort productndc: egen mmme = max(mme_count)
+	* It turns out only four 9 digit NDC's are associated with different MME_conversion_factors. 
+	* These cover only 19 unique substances.  This is not a big deal.  
+	replace MME_Conversion_Factor = min_mme if mmme > 1 & mmme != .
+	* Now all nine-digit NDC's have the same MME_conversion_factor.  
+preserve 
+	duplicates drop productndc, force 
+	keep productndc MME_Conversion_Factor 
+	save "${op_fp}mme_conversion_factors_by_ndc.dta", replace 
+restore 
+split Generic_Drug_Name, p("/")
+
+	/*
+	TODO - figure out the extent to which we can assign MME to substances on the 
+	basis of when it appears in this data.  
+	*/
+>>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
+
 
 
 
@@ -47,8 +89,12 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	keep if opi_ind == 1
 	drop if tropi_ind == 1
 	
+<<<<<<< HEAD
 		
 * Fix leading zero problem with short NDC codes
+=======
+* correct NDC length:
+>>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
 	split productndc, p("-")
 	gen len1 = strlen(productndc1)
 	gen len2 = strlen(productndc2)
@@ -66,6 +112,7 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	gen lentest = strlen(productndc)
 	tab lentest 
 	drop lentest 
+<<<<<<< HEAD
 * there are duplicates within NDC but these are mostly new ANDA for the same drug 
 	rename productndc NDC
 	replace NDC = subinstr(NDC, "-", "", .)
@@ -79,6 +126,16 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	merge 1:1 NDC using "${op_fp}opioid_mme_by_ndc.dta"
 	
 * 
+=======
+	gen nd2 = subinstr(productndc, "-", "", . )
+	replace productndc = nd2 
+	drop nd2 
+	merge m:1 productndc using "${op_fp}mme_conversion_factors_by_ndc.dta"
+	* Barely any of these actually match.  Maybe 360/6,800
+	/*
+	TODO - we know what the ingredients are.  We can maybe match that way.
+	*/
+>>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
 	
 * split active ingredients.  
 	split active_numerator_strength, p(";")
@@ -102,6 +159,7 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 		drop rr ctr
 		replace substancename = strtrim(substancename)
 		duplicates drop substancename, force
+<<<<<<< HEAD
 		drop if substancename == ""
 	gen mme = 0
 	levelsof substancename, local(nms)
@@ -175,3 +233,8 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	
 	
 
+=======
+		* there are 71 substance names - that's it.  Maybe that is manageable.  Though there is the problem that these numbers are messed up.  
+
+		
+>>>>>>> 391dd695ab38576a7c244345c92bc73f0df03a3a
