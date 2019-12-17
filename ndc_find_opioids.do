@@ -1,7 +1,7 @@
 * Tag opioid products in FDA NDC files
 
-global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
-global op_pr "/Users/austinbean/Desktop/programs/opioids/"
+global op_fp "/Users/tuk39938/Google Drive/Current Projects/HCCI Opioids/"
+global op_pr "/Users/tuk39938/Desktop/programs/opioids/"
 
 
 * product file
@@ -13,6 +13,11 @@ global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 	gen opi_ind = 1 if strpos(pharm_class, "opi")
 	keep if opi_ind == 1
 	drop opi_ind tropi_ind
+	
+	* reference on meaning of pharm classes:
+	* https://www.fda.gov/industry/structured-product-labeling-resources/pharmacologic-class 
+	* There are not other things to worry about in the pain-relief category.  There's tylenol, NSAIDs and opioids.  
+	
 	
 * Fix leading zero problem with short NDC codes
 	split productndc, p("-")
