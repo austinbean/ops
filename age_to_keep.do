@@ -1,0 +1,57 @@
+* variables to keep / rename from the state_age file
+
+keep geo_id name cbsa_code st_cd st_abbrev s0101_c01_001e s0101_c01_004e s0101_c01_005e s0101_c01_006e s0101_c01_007e s0101_c01_008e s0101_c01_009e s0101_c01_010e s0101_c01_011e s0101_c01_012e s0101_c01_013e s0101_c01_014e s0101_c01_015e s0101_c01_016e s0101_c01_017e s0101_c01_018e s0101_c01_019e s0101_c02_001e  s0101_c02_004e s0101_c02_005e s0101_c02_006e s0101_c02_007e s0101_c02_008e s0101_c02_009e s0101_c02_010e s0101_c02_011e s0101_c02_012e s0101_c02_013e s0101_c02_014e s0101_c02_015e s0101_c02_016e s0101_c02_017e s0101_c02_018e s0101_c02_019e s0101_c03_001e s0101_c03_004e s0101_c03_005e s0101_c03_006e s0101_c03_007e s0101_c03_008e s0101_c03_009e s0101_c03_010e s0101_c03_011e s0101_c03_012e s0101_c03_013e s0101_c03_014e s0101_c03_015e s0101_c03_016e s0101_c03_017e s0101_c03_018e s0101_c03_019e
+
+rename s0101_c01_001e total_est_pop
+rename s0101_c01_004e total_10_14
+rename s0101_c01_005e total_15_19
+rename s0101_c01_006e total_20_24
+rename s0101_c01_007e total_25_29
+rename s0101_c01_008e total_30_34
+rename s0101_c01_009e total_35_39
+rename s0101_c01_010e total_40_44
+rename s0101_c01_011e total_45_49
+rename s0101_c01_012e total_50_54
+rename s0101_c01_013e total_55_59
+rename s0101_c01_014e total_60_64
+rename s0101_c01_015e total_65_69
+rename s0101_c01_016e total_70_74
+rename s0101_c01_017e total_75_79
+rename s0101_c01_018e total_80_84
+rename s0101_c01_019e total_85_plus
+
+rename s0101_c02_001e male_total_est_pop
+rename s0101_c02_004e male_10_14
+rename s0101_c02_005e male_15_19
+rename s0101_c02_006e male_20_24
+rename s0101_c02_007e male_25_29 
+rename s0101_c02_008e male_30_34 
+rename s0101_c02_009e male_35_39 
+rename s0101_c02_010e male_40_44 
+rename s0101_c02_011e male_45_49 
+rename s0101_c02_012e male_50_54 
+rename s0101_c02_013e male_55_59 
+rename s0101_c02_014e male_60_64 
+rename s0101_c02_015e male_65_69 
+rename s0101_c02_016e male_70_74 
+rename s0101_c02_017e male_75_79 
+rename s0101_c02_018e male_80_84
+rename s0101_c02_019e male_85_plus
+
+rename s0101_c03_001e female_total_est_pop
+rename s0101_c03_004e female_10_14
+rename s0101_c03_005e female_15_19
+rename s0101_c03_006e female_20_24
+rename s0101_c03_007e female_25_29
+rename s0101_c03_008e female_30_34
+rename s0101_c03_009e female_35_39
+rename s0101_c03_010e female_40_44
+rename s0101_c03_011e female_45_49
+rename s0101_c03_012e female_50_54
+rename s0101_c03_013e female_55_59
+rename s0101_c03_014e female_60_64
+rename s0101_c03_015e female_65_69
+rename s0101_c03_016e female_70_74
+rename s0101_c03_017e female_75_79
+rename s0101_c03_018e female_80_84
+rename s0101_c03_019e female_85_plus

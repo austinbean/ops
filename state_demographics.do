@@ -14,6 +14,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}age_to_keep.do"
  sort name
  drop cbsa_code 
  save "${demo_filep}age_by_state/age_by_state.dta", replace
@@ -27,6 +28,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}disability_to_keep.do"
  sort name
  drop cbsa_code 
  save "${demo_filep}disability_status_by_state/disability_status_by_state.dta", replace
@@ -40,10 +42,15 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}educational_attain_to_keep.do"
  sort name
  drop cbsa_code 
  save "${demo_filep}educational_attainment_by_state/educ_attain_by_state.dta", replace
 
+ 
+  * TO KEEP START BELOW
+
+ 
 * employment by state
  import delimited "${demo_filep}employment_rate_by_state/ACSST5Y2010.S2301_data_with_overlays_2020-01-09T144033.csv", varnames(1) clear 
  gen cbsa_code = .
