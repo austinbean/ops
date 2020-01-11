@@ -1,6 +1,6 @@
 * metro area demographics, 2010
 * note that filename of .csv includes original date of download, so this needs to be changed with a different version
-
+	* NOTE some files do not have all CBSA for disability status or health insurance status
 
 
 global demo_filep = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/census_demographic_files/"
@@ -15,6 +15,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}age_to_keep.do"
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}age_by_metro_area/age_by_metro_area.dta", replace
@@ -28,6 +29,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}disability_to_keep.do"
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}disability_status_by_metro_area/disability_status_by_metro_area.dta", replace
@@ -41,10 +43,16 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}educational_attain_to_keep.do"
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}educational_attainment_by_metro_area/educ_attain_by_metro_area.dta", replace
 
+ 
+ * TO KEEP START BELOW
+ 
+ 
+ 
 * employment by metro area
  import delimited "${demo_filep}employment_rate_by_metro_area/ACSST5Y2010.S2301_data_with_overlays_2020-01-09T143635.csv", varnames(1) clear 
  gen st_cd = .
