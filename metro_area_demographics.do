@@ -47,11 +47,6 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}educational_attainment_by_metro_area/educ_attain_by_metro_area.dta", replace
-
- 
- * TO KEEP START BELOW
- 
- 
  
 * employment by metro area
  import delimited "${demo_filep}employment_rate_by_metro_area/ACSST5Y2010.S2301_data_with_overlays_2020-01-09T143635.csv", varnames(1) clear 
@@ -61,6 +56,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}employment_to_keep.do"
  sort name
  drop st_cd st_abbrev
  save  "${demo_filep}employment_rate_by_metro_area/employment_by_metro_area.dta", replace
@@ -73,6 +69,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+  do "${ops_prog_filep}health_insurance_to_keep.do" 
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}health_insurance_status_by_metro_area/health_ins_by_metro_area.dta", replace
@@ -85,6 +82,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}income_to_keep.do" 
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}income_by_metro_area/income_by_metro_area.dta", replace
@@ -97,6 +95,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  do "${ops_prog_filep}variable_labeler.do"
  drop if geo_id == "id"
  do "${ops_prog_filep}destring_and_replace.do"
+ do "${ops_prog_filep}race_to_keep.do" 
  sort name
  drop st_cd st_abbrev
  save "${demo_filep}race_by_metro_area/race_by_metro_area.dta", replace

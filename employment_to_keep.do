@@ -1,0 +1,22 @@
+* to keep from employment
+
+keep cbsa_code st_cd st_abbrev geo_id name s2301_c02_002e s2301_c02_003e s2301_c02_004e s2301_c02_005e s2301_c02_006e s2301_c02_007e s2301_c02_008e s2301_c04_002e s2301_c04_003e s2301_c04_004e s2301_c04_005e s2301_c04_006e s2301_c04_007e s2301_c04_008e s2301_c04_001e 
+
+
+
+rename s2301_c02_002e in_lab_for_16_19
+rename s2301_c02_003e in_lab_for_20_24
+rename s2301_c02_004e in_lab_for_25_44
+rename s2301_c02_005e in_lab_for_45_54
+rename s2301_c02_006e in_lab_for_55_64
+rename s2301_c02_007e in_lab_for_65_74
+rename s2301_c02_008e in_lab_for_75_plus
+ 
+rename s2301_c04_001e unemp_rate_16_plus
+rename s2301_c04_002e unemp_rate_16_19 
+rename s2301_c04_003e unemp_rate_20_24 
+rename s2301_c04_004e unemp_rate_25_44 
+rename s2301_c04_005e unemp_rate_45_54 
+rename s2301_c04_006e unemp_rate_55_64 
+rename s2301_c04_007e unemp_rate_65_74 
+rename s2301_c04_008e unemp_rate_75_plus
