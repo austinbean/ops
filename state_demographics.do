@@ -109,3 +109,8 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  merge 1:1 st_abbrev using "${demo_filep}income_by_state/income_by_state.dta", nogen
  merge 1:1 st_abbrev using "${demo_filep}race_by_state/race_by_state.dta", nogen
  
+ * Save here 
+ 
+ keep geo_id name 
+ save "${demo_filep}state_names_and_geoids.dta", replace
+ 
