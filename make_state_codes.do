@@ -12,7 +12,7 @@ replace st_abbrev = "CA" if lower(name) =="california"	//06  CA	California
 replace st_abbrev = "CO" if lower(name) =="colorado"	//08  CO	Colorado
 replace st_abbrev = "CT" if lower(name) =="connecticut"	//09  CT	Connecticut
 replace st_abbrev = "DE" if lower(name) =="delaware"	//10  DE	Delaware
-replace st_abbrev = "DC" if lower(name) =="district of columbia"	//10  DC	Washington, DC
+replace st_abbrev = "DC" if lower(name) =="district of columbia"	//11  DC	Washington, DC
 replace st_abbrev = "FL" if lower(name) =="florida"	//12 FL	Florida
 replace st_abbrev = "GA" if lower(name) =="georgia"	//13  GA	Georgia
 replace st_abbrev = "HI" if lower(name) =="hawaii"	//15  HI	hawaii
@@ -42,7 +42,7 @@ replace st_abbrev = "ND" if lower(name) =="north dakota"	//38  ND	North Dakota
 replace st_abbrev = "OH" if lower(name) =="ohio"	//39  OH	Ohio
 replace st_abbrev = "OK" if lower(name) =="oklahoma"	// 40  OK	Oklahoma
 replace st_abbrev = "OR" if lower(name) =="oregon"	//41   OR	Oregon
-replace st_abbrev = "PA" if lower(name) =="pennsylvania"	//PA	Pennsylvania
+replace st_abbrev = "PA" if lower(name) =="pennsylvania"	//42 PA	Pennsylvania
 replace st_abbrev = "PR" if lower(name) =="puerto rico"	//72  PR	Puerto Rico
 replace st_abbrev = "RI" if lower(name) =="rhode island"	//44  RI	Rhode Island
 replace st_abbrev = "SC" if lower(name) =="south carolina"	//45  SC	South Carolina

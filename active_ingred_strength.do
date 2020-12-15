@@ -13,9 +13,15 @@ presentation form matters ->
 a cdc tool with clinical support in mind:
 
  https://www.cdc.gov/drugoverdose/prescribing/guideline.html#tabs-2-3
+ 
+ TODO:
+	1.  Product characteristics.
+	2.  match these NDCs to the HCCI - or at least see how many are matchable or not.  
+		- what to do about the others?  Figure out how much of a problem it is.  
+ 
 */
-=======
-local whereami = "tuk39938"
+
+local whereami = "austinbean"
 global op_fp "/Users/`whereami'/Google Drive/Current Projects/HCCI Opioids/"
 global op_pr "/Users/`whereami'/Desktop/programs/opioids/"
 
@@ -61,11 +67,14 @@ split Generic_Drug_Name, p("/")
 
 
 * opioids w/ MME from CDC, plus maybe some additions.  Source was pdmpassist.org  
-	* If this list has all of the NDCs, then it's a better list anyway.  So: use this instead of what we already have.  Ask them to upload it as a table.  
+	* If this list has all of the NDCs, then it's a better list anyway.  So: use this instead of what we already have.  Ask them to upload it as a table. 
+	// Not sure which NDCs are correct.  The FDA data has NDC codes of varying lengths and different patterns, e.g., 5 digits - 4 digits - 1 digit,  
+	// others 5 - 3 - 2, others 4 - 4 - 2
 
 clear 
 import excel "${op_fp}Conversion Reference Table.xlsx", sheet("Opioids") firstrow
 gen productndc = substr(NDC, 1, 9)
+gen ndcsuffix = substr(NDC, -2, .)
 save "${op_fp}opioid_mme_by_ndc.dta", replace
 
 clear
@@ -87,7 +96,9 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	keep if opi_ind == 1
 	drop if tropi_ind == 1
 	
-		
+/*	
+// THIS IS NOT CORRECT - the codes as written are correct, but length actually varies.
+Some are 5 digits - 4 digits - 1 digit, others 5 - 3 - 2, others 4 - 4 - 2
 * Fix leading zero problem with short NDC codes
 * correct NDC length:
 	split productndc, p("-")
@@ -115,6 +126,7 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	drop if startmarketingdate != mxdate & ddd > 0
 	drop ddd 
 	duplicates drop NDC, force 
+*/
 	
 * merge morphine MME
 	merge 1:1 NDC using "${op_fp}opioid_mme_by_ndc.dta"
@@ -158,6 +170,10 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	foreach nm of local nms{
 		di `" replace mme = if substancename == "`nm'" "'
 	}
+	
+
+	
+	stop
 * there are 60 unique substances.	
  replace mme = if substancename == "ACETAMINOPHEN" 
  replace mme = if substancename == "ALFENTANIL HYDROCHLORIDE" 
@@ -224,7 +240,7 @@ save "${op_fp}opioid_raw_ingred_mme.dta", replace
 	
 	
 
-=======
+
 		* there are 71 substance names - that's it.  Maybe that is manageable.  Though there is the problem that these numbers are messed up.  
 
 		
