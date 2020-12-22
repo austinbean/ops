@@ -20,11 +20,47 @@ using DataFramesMeta
 using StatsBase
 using StaticArrays 
 using LinearAlgebra 
+using Statistics
 
+
+"""
+`FW(x)`
+Takes the object x and maps it to FrequencyWeights for use in sampling.
+x should be a vector of real numbers of some kind
+
+julia>`FW([1.0])`
+1-element FrequencyWeights{Float64,Float64,Array{Float64,1}}:
+ 1.0
+ 
+julia>`sample(["a","b"], FW([0.5, 0.5]))`
+"b"
+"""
 function FW(x)
     return FrequencyWeights(x)
 end 
 
+
+"""
+`MFW(ar1)`
+Takes a matrix of real numbers (percentages of population having some characteristic from CPS)
+and returns an Array{AbstractWeights, 1} where each element is a set of FrequencyWeights for some
+population characteristic.
+
+julia> MFW([0.5 0.5;0.25 0.75])
+2-element Array{AbstractWeights,1}:
+ [0.5, 0.5]
+ [0.25, 0.75]
+
+
+julia> sample(["a", "B"], MFW([0.5 0.5;0.25 0.75])[1])
+"B"
+
+julia> for el in MFW([0.5 0.5;0.25 0.75])
+       println(sample(["a", "b"], el))
+       end
+"a"
+"b"
+"""
 function MFW(ar1)
     outp = Array{AbstractWeights, 1}()
     for i = 1:size(ar1,1)
@@ -34,7 +70,20 @@ function MFW(ar1)
 end 
 
 
+"""
+`OH(N)`
+Generates an Array{Array{Int64,1}, 1}, of one-hot vectors.  It's an identity matrix, but represented 
+as a vector of vectors, so the indexing is simpler.
+
+julia> OH(3) 
+
+3-element Array{Array{Int64,1},1}:
+ [1, 0, 0]
+ [0, 1, 0]
+ [0, 0, 1]
+"""
 function OH(N)
+    # generates an Array{Array{Int64,1}, 1} w/ 1's on the diagonal.  Looks like an identity matrix but is an array of the rows of one instead.  
     outp = Array{Array{Int64,1},1}()
     for i = 1:N
         tm1 = zeros(N)
@@ -44,8 +93,29 @@ function OH(N)
     return outp
 end 
 
+"""
+`Sampler(n, x...)`
+
+Samples characteristics for a single individual.  Returns a list of those characteristics x..., which can handle many 
+characteristics.   Index n is for the market.
+
+- n indexes the market 
+- x... is a collection of characteristics, stored as tuples of OH-vectors and FrequencyWeights.
+
+TEST: 
+
+mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
+race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
+race = (OH(size(race_w, 2)), MFW(race_w))
+disability = (OH(size(disability_w, 2)), MFW(disability_w))
+
+Sampler(4, race, disability)
+# returns an Array{Float64,1} of eight elements, first six corresponding to race and last two to disability status.  
+"""
 function Sampler(n, x...)
-    # generates ONE random individual according to the objects in the list x
+    # generates ONE random individual according to the objects in the list x...
     outp = zeros(Float64, 0)
     for (i,el) in enumerate(x) 
         outp = vcat(outp, sample(el[1], el[2][n])) # n is the index of the market sampling weights 
@@ -53,7 +123,28 @@ function Sampler(n, x...)
     return outp 
 end 
 
+"""
+`Population(S, n, x...)`
 
+Returns a set of S individuals w/ random characteristics from the collection x... for the market n.
+
+- S is an integer representing a number of people.
+- n is the index of a market 
+- x... is a collection of characteristics, stored as tuples of OH-vectors and FrequencyWeights 
+
+TEST: 
+
+
+mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
+race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
+race = (OH(size(race_w, 2)), MFW(race_w))
+disability = (OH(size(disability_w, 2)), MFW(disability_w))
+
+Population(100, 2, race, disability)
+# returns an 8 × 100 array, where each column is an "individual" represented as a race (first six elements) and a disability status (last two)
+"""
 function Population(S, n, x...)
     # for a market n, returns S random individuals given the objects in the list x 
     length = size( Sampler(n, x...) , 1)
@@ -64,6 +155,27 @@ function Population(S, n, x...)
     return outp 
 end 
 
+"""
+`PopMarkets(M, S, Ch, x...)`
+
+Returns a collection of simulated individuals numbering S across the markets M, where C is a set of random shocks and x... is a collection of characteristics.
+
+- M indexes markets. A list of e.g., strings ("Alabama", "Arkansas", ... ) or ("2001", "2002", ... ). 
+- S is the number of individuals to be generated.
+- Ch is an integer. indexes the number of characteristics w/ a random coefficient as an integer (?)
+- x... is a list of demographics, e.g., pop_w, race_w, ... 
+
+
+TEST: 
+mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+states = convert(Array{String,1}, mkt_chars[!,:name])
+pop_w = convert(Array{Float64,2}, mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]])
+pop = (OH(size(pop_w, 2)), MFW(pop_w))
+N_individuals = 100
+N_characteristics = 3
+sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop)
+# returns a 19 × 100 × 52 (characteristics × individuals × markets) array 
+"""
 function PopMarkets(M, S, Ch, x...)
     # get the simulated for S individuals demographics over all of the markets M w/ Ch characteristics and x... demographics.  
     length = size( Sampler(1, x...) , 1)
@@ -90,6 +202,14 @@ function SimShares()
     return nothing
 end 
 
+
+"""
+`NormalizeVar(x)`
+
+Normalizes the variable given by the vector x, subtracting the mean and dividing by the SD.
+
+NormalizeVar([1,0]) ≈ [+ √2, - √2]
+"""
 function NormalizeVar(x)   
     # check here that this has only one dimension
     if (minimum(size(x)) > 2)&(ndims(x) > 1)
@@ -100,6 +220,16 @@ function NormalizeVar(x)
     return (x.-μ)./σ  
 end 
 
+
+"""
+`MKT(N)`
+
+Imports the demographics, draws a sample of simulated individuals according to those characteristics.  
+The variable N is actually not used.
+
+Returns a collection given by the call to PopMarkets at the bottom: 
+(characteristics + # rand shocks) × number of individuals × number of markets 
+"""
 function MKT(N)
 
     N_individuals = 100
@@ -141,18 +271,17 @@ function MKT(N)
     unemp = (OH(size(unemployment_w, 2)), MFW(unemployment_w))
     hhinc = (OH(size(hhinc_w, 2)), MFW(hhinc_w))
 
+    # NB size of this is: "features" × number of individuals × # of markets 
+    # to index one person: sim_individuals[:, i, j] -> some person i in market j 
     sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
-     
     # products w/ their characteristics.   
-
-    product_chars = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/simple_product_chars.csv", DataFrame)
-
-
     # shares, when available.  
-
 end 
 
 
+function Product(N)
+    product_chars = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/simple_product_chars.csv", DataFrame)
+end 
 
 
 #=
