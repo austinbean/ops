@@ -220,6 +220,22 @@ function NormalizeVar(x)
     return (x.-μ)./σ  
 end 
 
+"""
+`InitialParams`
+
+TODO - want a collection of indices for what's where and a vector of initial values.  
+"""
+function InitialParams(x...)
+    arr = Array{Float64,1}()
+    ds = Array{Tuple{Int64},1}()
+    curr = 1
+    push!(ds, 1)
+    for (i, el) in enumerate(x)
+        
+        push!(ds, curr+length(x[1]))
+    end     
+    return arr, ds 
+end 
 
 """
 `MKT(N)`
