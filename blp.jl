@@ -21,12 +21,15 @@ using StatsBase
 using StaticArrays 
 using LinearAlgebra 
 using Statistics
-
+using Random 
 
 """
 `FW(x)`
 Takes the object x and maps it to FrequencyWeights for use in sampling.
 x should be a vector of real numbers of some kind
+
+
+## Test: ##
 
 julia>`FW([1.0])`
 1-element FrequencyWeights{Float64,Float64,Array{Float64,1}}:
@@ -45,6 +48,8 @@ end
 Takes a matrix of real numbers (percentages of population having some characteristic from CPS)
 and returns an Array{AbstractWeights, 1} where each element is a set of FrequencyWeights for some
 population characteristic.
+
+## Test ## 
 
 julia> MFW([0.5 0.5;0.25 0.75])
 2-element Array{AbstractWeights,1}:
@@ -75,13 +80,16 @@ end
 Generates an Array{Array{Int64,1}, 1}, of one-hot vectors.  It's an identity matrix, but represented 
 as a vector of vectors, so the indexing is simpler.
 
+## Test ##
+
 julia> OH(3) 
 
 3-element Array{Array{Int64,1},1}:
  [1, 0, 0]
  [0, 1, 0]
  [0, 0, 1]
-"""
+
+ """
 function OH(N)
     # generates an Array{Array{Int64,1}, 1} w/ 1's on the diagonal.  Looks like an identity matrix but is an array of the rows of one instead.  
     outp = Array{Array{Int64,1},1}()
@@ -102,16 +110,22 @@ characteristics.   Index n is for the market.
 - n indexes the market 
 - x... is a collection of characteristics, stored as tuples of OH-vectors and FrequencyWeights.
 
-TEST: 
+## TEST: ##
 
 mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
+
 race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+
 disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
+
 race = (OH(size(race_w, 2)), MFW(race_w))
+
 disability = (OH(size(disability_w, 2)), MFW(disability_w))
 
 Sampler(4, race, disability)
+
 # returns an Array{Float64,1} of eight elements, first six corresponding to race and last two to disability status.  
 """
 function Sampler(n, x...)
@@ -132,17 +146,22 @@ Returns a set of S individuals w/ random characteristics from the collection x..
 - n is the index of a market 
 - x... is a collection of characteristics, stored as tuples of OH-vectors and FrequencyWeights 
 
-TEST: 
-
+## TEST: ##
 
 mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
+
 race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+
 disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
+
 race = (OH(size(race_w, 2)), MFW(race_w))
+
 disability = (OH(size(disability_w, 2)), MFW(disability_w))
 
 Population(100, 2, race, disability)
+
 # returns an 8 × 100 array, where each column is an "individual" represented as a race (first six elements) and a disability status (last two)
 """
 function Population(S, n, x...)
@@ -166,14 +185,22 @@ Returns a collection of simulated individuals numbering S across the markets M, 
 - x... is a list of demographics, e.g., pop_w, race_w, ... 
 
 
-TEST: 
+## TEST: ## 
+
 mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+
 states = convert(Array{String,1}, mkt_chars[!,:name])
+
 pop_w = convert(Array{Float64,2}, mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]])
+
 pop = (OH(size(pop_w, 2)), MFW(pop_w))
+
 N_individuals = 100
+
 N_characteristics = 3
+
 sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop)
+
 # returns a 19 × 100 × 52 (characteristics × individuals × markets) array 
 """
 function PopMarkets(M, S, Ch, x...)
@@ -207,8 +234,11 @@ end
 `NormalizeVar(x)`
 
 Normalizes the variable given by the vector x, subtracting the mean and dividing by the SD.
+ 
+## Test ## 
 
 NormalizeVar([1,0]) ≈ [+ √2, - √2]
+
 """
 function NormalizeVar(x)   
     # check here that this has only one dimension
@@ -221,19 +251,44 @@ function NormalizeVar(x)
 end 
 
 """
-`InitialParams`
+`InitialParams(x...; rand_init = true )`
+Will take a collection of demographics stored as tuples of OH-vectors and FrequencyWeights in x... 
+and will return an initial vector, which can either be random or from a particular spot.
+Will also return a collection of indexes corresponding to the dimension of the x... vectors 
+Can set rand_init = false to start from a particular spot.
 
-TODO - want a collection of indices for what's where and a vector of initial values.  
+- x... collection of demographic features stored as tuples of OH-vectors and FrequencyWeights
+- rand_init = true; set to false to start from some particular set of parameters
+
+## Test ## 
+
+mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+
+mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
+
+race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+
+disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
+
+race = (OH(size(race_w, 2)), MFW(race_w))
+
+disability = (OH(size(disability_w, 2)), MFW(disability_w))
+
+InitialParams()
 """
-function InitialParams(x...)
-    arr = Array{Float64,1}()
-    ds = Array{Tuple{Int64},1}()
+function InitialParams(x...; rand_init = true )
+    Random.seed!(323)
+    ds = Array{Tuple{Int64,Int64},1}()
     curr = 1
-    push!(ds, 1)
     for (i, el) in enumerate(x)
-        
-        push!(ds, curr+length(x[1]))
-    end     
+        push!(ds, (curr,curr+length(el[1])-1))
+        curr = curr +length(el[1]) 
+    end   
+    if rand_init 
+        arr = randn(curr-1)  
+    else 
+        arr = zeros(Float64, curr-1)
+    end 
     return arr, ds 
 end 
 
