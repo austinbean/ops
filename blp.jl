@@ -210,10 +210,13 @@ function PopMarkets(M, S, Ch, x...)
     outp = zeros(Float64, length+Ch, S, mkts)
     for i = 1:mkts 
         outp[1:length,:,i] += Population(S, i, x...) #
-        outp[(length+1):end,:,i] += randn(Ch, S)     # shocks, but think carefully about this.  
+        outp[(length+1):end,:,i] += randn(Ch, S)     # shocks, but think carefully about this.  These go on product features.  
     end 
     return outp 
 end 
+
+
+
 
 ### TODO 
 function DemographicParams(x...)
@@ -274,7 +277,10 @@ race = (OH(size(race_w, 2)), MFW(race_w))
 
 disability = (OH(size(disability_w, 2)), MFW(disability_w))
 
-InitialParams()
+a1, b1 = InitialParams(race, disability)
+
+b1 == [(1,6), (7,8)]
+sum(a1 .≈ [  1.065729740994666, -0.829056350999318,  0.8962148070867403,  1.0436992067470956,  0.07009106904271295, -0.5353616478134361, -0.44631360818507515, 0.11163462482008807]) == 8
 """
 function InitialParams(x...; rand_init = true )
     Random.seed!(323)
@@ -296,7 +302,7 @@ end
 `MKT(N)`
 
 Imports the demographics, draws a sample of simulated individuals according to those characteristics.  
-The variable N is actually not used.
+- The variable N is actually not used.
 
 Returns a collection given by the call to PopMarkets at the bottom: 
 (characteristics + # rand shocks) × number of individuals × number of markets 
@@ -351,9 +357,15 @@ end
 
 
 function Product(N)
+    # a simple set of product characteristics w/ only DEA schedule, whether Oral or not, then indicators for fentanyl, oxycodone and hydrocodone
     product_chars = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/simple_product_chars.csv", DataFrame)
 end 
 
+
+function MarketShares()
+    # TODO - this is the next step. 
+    return nothing # import and return these.  
+end 
 
 #=
 characteristics list from ACS:
