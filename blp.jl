@@ -357,14 +357,14 @@ end
 
 
 function Product(N)
+    # TODO - this may not be necessary if all of this comes w/ the shares
     # a simple set of product characteristics w/ only DEA schedule, whether Oral or not, then indicators for fentanyl, oxycodone and hydrocodone
     product_chars = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/simple_product_chars.csv", DataFrame)
 end 
 
 
 function MarketShares()
-    # TODO - this is the next step. 
-    return nothing # import and return these.  
+    market shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
 end 
 
 #=
