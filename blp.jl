@@ -224,8 +224,18 @@ function DemographicParams(x...)
     return nothing 
 end 
 
-function PredUtil(D)
-    return nothing
+
+"""
+`PredUtil(arr::Array, params::Array, δ::Array)`
+Should take a single market, return mean util across a bunch of products.
+input will be 
+"""
+function PredUtil(arr::Array, params::Array, δ::Array, products::Array)
+    @assert ndims(arr) == 2           # want to operate within a market only.  
+    characs, individuals = size(arr)  # number of features, number of individuals.  
+    @assert 
+
+    return 
 end 
 
 function SimShares()
@@ -303,6 +313,7 @@ end
 
 Imports the demographics, draws a sample of simulated individuals according to those characteristics.  
 - The variable N is actually not used.
+- Returns a collection of those individuals, plus a collection of parameters of the right dimension (corresponding to the characteristcs AND the product features)
 
 Returns a collection given by the call to PopMarkets at the bottom: 
 (characteristics + # rand shocks) × number of individuals × number of markets 
@@ -348,23 +359,86 @@ function MKT(N)
     unemp = (OH(size(unemployment_w, 2)), MFW(unemployment_w))
     hhinc = (OH(size(hhinc_w, 2)), MFW(hhinc_w))
 
-    # NB size of this is: "features" × number of individuals × # of markets 
+    params = InitialParams(pop, male, female, race, disability, education, labor, unemp, hhinc)
+    # NB size of this is: ("features" = demographics + characteristics) × number of individuals × # of markets 
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
     sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # products w/ their characteristics.   
-    # shares, when available.  
+    # shares, when available. 
+    return params, sim_individuals  
 end 
 
 
-function Product(N)
-    # TODO - this may not be necessary if all of this comes w/ the shares
-    # a simple set of product characteristics w/ only DEA schedule, whether Oral or not, then indicators for fentanyl, oxycodone and hydrocodone
-    product_chars = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/simple_product_chars.csv", DataFrame)
-end 
 
+"""
+`MarketShares()`
+Doesn't do anything but import and return the market share and product characteristic data.
+Returns both the original data set and a subset called wanted_data w/ just the columns of interest.  
 
+1 yr
+2 ndc_code
+3 nat_pres_low
+4 nat_pres_high
+5 nat_pres_rand
+6 nat_pats_low
+7 nat_pats_high
+8 nat_pats_rand
+9 copay_low
+10 deduct_low
+11 copay_high
+12 deduct_high
+13 nat_total_pres_low
+14 nat_total_pres_high
+15 nat_total_pres_rand
+16 nat_total_pats_low
+17 nat_total_pats_high
+18 nat_total_pats_rand
+19 p75
+20 ndccode
+21 packagedescription
+22 ndc11code
+23 productndc
+24 producttypename
+25 proprietaryname
+26 proprietarynamesuffix
+27 nonproprietaryname
+28 dosageformname
+29 routename
+30 startmarketingdate
+31 endmarketingdate
+32 marketingcategoryname
+33 applicationnumber
+34 labelername
+35 substancename
+36 strengthnumber
+37 strengthunit
+38 pharm_classes
+39 deaschedule
+40 status
+41 lastupdate
+42 packagendcexcludeflag
+43 productndcexcludeflag
+44 listingrecordcertifiedthrough
+45 startmarketingdatepackage
+46 endmarketingdatepackage
+47 samplepackage
+48 querycode
+49 supplementary_querycode
+50 DEA2
+51 ORAL
+52 simple_fent
+53 simple_oxy
+54 simple_hydro
+55 _merge
+56 outside_patients
+57 outside_presc
+58 market_shares
+59 dd
+"""
 function MarketShares()
-    market shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
+    market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
+    wanted_data = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL, :market_shares, ] ]
+    return market_shares, wanted_data 
 end 
 
 #=
