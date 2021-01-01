@@ -228,19 +228,81 @@ end
 """
 `PredUtil(arr::Array, params::Array, δ::Array)`
 Should take a single market, return mean util across a bunch of products.
-input will be 
+To cut allocations, pass a vector to hold the utilities.  
+This should operate in-place on the vector δ
+- `mkt` current collection of simulated individuals.  
+- `params` current value of all parameters 
+- `δ` current value of mean utilities 
+- `products` set of items and their characteristics, by market 
+- `mean_utils` temporary collection to put the mean new mean utils
+
+∑_ns exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
+
+
+## TEST ##
+shares = MarketShares(:yr, :ndc_code, :market_shares)
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+params_indices, markets = MKT(1);
 """
-function PredUtil(arr::Array, params::Array, δ::Array, products::Array)
-    @assert ndims(arr) == 2           # want to operate within a market only.  
-    characs, individuals = size(arr)  # number of features, number of individuals.  
-    @assert 
-
-    return 
+function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array, tmp::Array)
+    @assert ndims(mkt) == 2               # want to operate within a market only.  
+    characs, individuals = size(mkt)      # number of features, number of individuals.  
+    num_prods, num_chars = size(products) # number of products, number of product characteristics 
+   # @assert # check dims of δ and products - must be one for each.  
+    ZeroOut(mean_utils)
+   for j = 1:num_prods
+        for i = 1:individuals
+            mean_utils[j] += Utils()
+        end
+    end 
 end 
 
-function SimShares()
-    return nothing
+
+"""
+`Util`
+Compute the utility over all products for a single simulated person in the market 
+- `demographics` is an array of demographics for an individual
+- `products` is an array of features 
+- `δ` is an array of the current mean utilities 
+- `params` is an array of the current set of parameters
+- `utils` is an array w/ dimension equal to that of the products in the market.
+
+Products, δ must be in the same order
+
+## TEST ##
+params_indices, markets = MKT(1);
+shares = MarketShares(:yr, :ndc_code, :market_shares)
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+
+So, need exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
+- δ a mean util
+- x^k_jt are characteristics getting a random coefficient.  
+- σ_k a parameter multiplying a shock
+- D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
+
+"""
+function Util(demographics::Array, products_char::Array, δ::Real, params::Array, utils::Array)
+    ZeroOut(utils)
+    num_prods, num_chars = size(products_char)
+    for i = 1:num_prods 
+        # TODO - this can be redone so that it doesn't require keeping track of this 3.
+        for j = 3:num_chars # "3" is an annoying constant - first two columns are market and product IDs.
+            demographics
+        end 
+    end     
+    return  
 end 
+
+"""
+`ZeroOut`
+Dumb function to set a vector equal to zero.
+"""
+function ZeroOut(x)
+    for i = 1:length(x)
+        x[i] = 0.0
+    end 
+end 
+
 
 
 """
@@ -264,35 +326,38 @@ function NormalizeVar(x)
 end 
 
 """
-`InitialParams(x...; rand_init = true )`
+`InitialParams(Characteristics, x...; rand_init = true )`
 Will take a collection of demographics stored as tuples of OH-vectors and FrequencyWeights in x... 
 and will return an initial vector, which can either be random or from a particular spot.
 Will also return a collection of indexes corresponding to the dimension of the x... vectors 
 Can set rand_init = false to start from a particular spot.
 
-- x... collection of demographic features stored as tuples of OH-vectors and FrequencyWeights
-- rand_init = true; set to false to start from some particular set of parameters
+- `Characteristics` - how many characteristics will get random coefficients?  these have variances
+- `x...` collection of demographic features stored as tuples of OH-vectors and FrequencyWeights
+- `rand_init` = true; set to false to start from some particular set of parameters
+
+TODO - this does not include the variance of the random shock on the characteristic  
 
 ## Test ## 
+- broken ATM since another argument was added.  
+mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) ;
 
-mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop]);
 
-mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
+race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]]);
 
-race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability]);
 
-disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
+race = (OH(size(race_w, 2)), MFW(race_w));
 
-race = (OH(size(race_w, 2)), MFW(race_w))
+disability = (OH(size(disability_w, 2)), MFW(disability_w));
 
-disability = (OH(size(disability_w, 2)), MFW(disability_w))
-
-a1, b1 = InitialParams(race, disability)
+a1, b1 = InitialParams(3, race, disability)
 
 b1 == [(1,6), (7,8)]
 sum(a1 .≈ [  1.065729740994666, -0.829056350999318,  0.8962148070867403,  1.0436992067470956,  0.07009106904271295, -0.5353616478134361, -0.44631360818507515, 0.11163462482008807]) == 8
 """
-function InitialParams(x...; rand_init = true )
+function InitialParams(Characteristics, x...; rand_init = true )
     Random.seed!(323)
     ds = Array{Tuple{Int64,Int64},1}()
     curr = 1
@@ -301,27 +366,31 @@ function InitialParams(x...; rand_init = true )
         curr = curr +length(el[1]) 
     end   
     if rand_init 
-        arr = randn(curr-1)  
+        arr = randn(curr-1)  # generate random parameters
     else 
         arr = zeros(Float64, curr-1)
     end 
+    # add variances for shocks to random coefficient:
+    vcat(arr, abs.(rand(Float64, Characteristics)))
+    push!(ds, (curr,curr+Characteristics-1))
     return arr, ds 
 end 
 
 """
-`MKT(N)`
+`MKT(N, C)`
 
 Imports the demographics, draws a sample of simulated individuals according to those characteristics.  
-- The variable N is actually not used.
+- The variable N is the number of individuals drawn per market.
+- C is the number of characteristics getting a random coefficient.   
 - Returns a collection of those individuals, plus a collection of parameters of the right dimension (corresponding to the characteristcs AND the product features)
 
 Returns a collection given by the call to PopMarkets at the bottom: 
 (characteristics + # rand shocks) × number of individuals × number of markets 
 """
-function MKT(N)
+function MKT(N, C)
 
-    N_individuals = 100
-    N_characteristics = 3
+    N_individuals = N      # number of individuals to simulate per market.  
+    N_characteristics = C  # number of characteristics getting a random coeff 
 
     mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
     mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
@@ -371,9 +440,14 @@ end
 
 
 """
-`MarketShares()`
+`MarketShares(MKT...)`
 Doesn't do anything but import and return the market share and product characteristic data.
-Returns both the original data set and a subset called wanted_data w/ just the columns of interest.  
+Returns both the original data set and a subset called wanted_data w/ just the columns of interest. 
+- Takes a set of arguments MKT... which are column indices  
+
+## TEST ##
+
+shares = MarketShares(:yr, :ndc_code, :market_shares)
 
 1 yr
 2 ndc_code
@@ -435,11 +509,30 @@ Returns both the original data set and a subset called wanted_data w/ just the c
 58 market_shares
 59 dd
 """
-function MarketShares()
+function MarketShares(MKT...) # take a variable identifying the market here
+    # TODO here - split these up more effectively into markets, however divided.  
     market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
-    wanted_data = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL, :market_shares, ] ]
-    return market_shares, wanted_data 
+    wanted_shares = market_shares[!, [MKT...]]
+    return convert(Array{Real,2}, wanted_shares)
 end 
+
+"""
+`ProductChars(Characteristics...)`
+Takes a set `Characteristics` of column indexes in the file and returns the characteristics 
+
+## TEST ### 
+
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+"""
+function ProductChars(Characteristics...)
+    # TODO - need to split into markets in the same way as MarketShares() does it.
+    market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
+    #wanted_characteristics = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL ] ]
+    wanted_characteristics = market_shares[!, [Characteristics...] ]
+    return convert(Array{Real,2}, wanted_characteristics)
+end 
+
+
 
 #=
 characteristics list from ACS:
