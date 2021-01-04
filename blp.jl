@@ -242,7 +242,8 @@ This should operate in-place on the vector δ
 ## TEST ##
 shares = MarketShares(:yr, :ndc_code, :market_shares)
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
-params_indices, markets = MKT(1);
+params_indices, markets = MKT(10,3);
+    # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 """
 function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array, tmp::Array)
     @assert ndims(mkt) == 2               # want to operate within a market only.  
@@ -270,9 +271,17 @@ Compute the utility over all products for a single simulated person in the marke
 Products, δ must be in the same order
 
 ## TEST ##
-params_indices, markets = MKT(1);
 shares = MarketShares(:yr, :ndc_code, :market_shares)
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+params_indices, markets = MKT(10,3);
+cinc = markets[:,:,10]
+    # SO FAR - this doesn't error and returns something of the right dimension.  A start!  
+    But definitely wrong, b/c many values are negative.  
+Util(cinc[:,1], charcs, zeros(948), params_indices[1], zeros(948))
+
+TODO - get a case where the answer is obvious.
+
+Then I just need the product of a few elements in prod_charcs × (params*demos)
 
 So, need exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
 - δ a mean util
@@ -281,16 +290,23 @@ So, need exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) 
 - D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
 
 """
-function Util(demographics::Array, products_char::Array, δ::Real, params::Array, utils::Array)
-    ZeroOut(utils)
+function Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)
+    ZeroOut(utils)              # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
     for i = 1:num_prods 
+        tmp_sum = 0.0           # reset the running utility for each person. 
+        tmp_sum += δ[i]         # product-specific part 
         # TODO - this can be redone so that it doesn't require keeping track of this 3.
         for j = 3:num_chars # "3" is an annoying constant - first two columns are market and product IDs.
-            demographics
+            tmp_sum += products_char[i,j]*(params'*demographics) # should just be able to take dot of params, individual 
         end 
-    end     
-    return  
+        utils[i] += tmp_sum 
+    end    
+    
+    mx_u = maximum(utils)       # max for numerical stability
+    sm = sum(exp.(utils.-mx_u)) # denominator: sum (exp ( util - mx_u))
+    utils = utils./sm                 # normalize by denominator 
+    return utils  
 end 
 
 """
@@ -354,6 +370,7 @@ disability = (OH(size(disability_w, 2)), MFW(disability_w));
 
 a1, b1 = InitialParams(3, race, disability)
 
+- not right ATM since another argument added 
 b1 == [(1,6), (7,8)]
 sum(a1 .≈ [  1.065729740994666, -0.829056350999318,  0.8962148070867403,  1.0436992067470956,  0.07009106904271295, -0.5353616478134361, -0.44631360818507515, 0.11163462482008807]) == 8
 """
@@ -370,10 +387,8 @@ function InitialParams(Characteristics, x...; rand_init = true )
     else 
         arr = zeros(Float64, curr-1)
     end 
-    # add variances for shocks to random coefficient:
-    vcat(arr, abs.(rand(Float64, Characteristics)))
     push!(ds, (curr,curr+Characteristics-1))
-    return arr, ds 
+    return vcat(arr, abs.(rand(Float64, Characteristics))), ds 
 end 
 
 """
@@ -428,7 +443,7 @@ function MKT(N, C)
     unemp = (OH(size(unemployment_w, 2)), MFW(unemployment_w))
     hhinc = (OH(size(hhinc_w, 2)), MFW(hhinc_w))
 
-    params = InitialParams(pop, male, female, race, disability, education, labor, unemp, hhinc)
+    params = InitialParams(3, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # NB size of this is: ("features" = demographics + characteristics) × number of individuals × # of markets 
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
     sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
