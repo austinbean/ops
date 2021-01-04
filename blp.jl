@@ -23,6 +23,35 @@ using LinearAlgebra
 using Statistics
 using Random 
 
+
+
+# NB: the underlying objects here are mutable, even though the struct is not
+struct products  
+    ndcs::Vector{String}    
+    shares::Vector{Float64}
+    characteristics::Matrix{Real}
+end 
+
+
+struct demo 
+    labels::Vector{String}
+    categories::Vector{Real}
+    weights::StatsBase.FrequencyWeights 
+end 
+
+
+struct market
+    ID::Int
+    demographics::Vector{demo}
+end 
+
+
+
+
+
+
+
+
 """
 `FW(x)`
 Takes the object x and maps it to FrequencyWeights for use in sampling.
@@ -287,7 +316,7 @@ function Util(demographics::Array, products_char::Array, δ::Real, params::Array
     for i = 1:num_prods 
         # TODO - this can be redone so that it doesn't require keeping track of this 3.
         for j = 3:num_chars # "3" is an annoying constant - first two columns are market and product IDs.
-            demographics
+            #demographics
         end 
     end     
     return  
