@@ -30,12 +30,13 @@ struct products
     ndcs::Vector{String}    
     shares::Vector{Float64}
     characteristics::Matrix{Real}
+    δ::Vector{Float64}
 end 
 
 
 struct demo 
-    labels::Vector{String}
-    categories::Vector{Real}
+    labels::Vector{Symbol}
+    categories::Matrix{Real}
     weights::StatsBase.FrequencyWeights 
 end 
 
@@ -466,6 +467,14 @@ function MKT(N, C)
     return params, sim_individuals  
 end 
 
+
+function MKT()
+    pop_w = convert(Array{Float64,2}, mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]])
+
+    pop_w = demo([:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus],
+    OH(size(pop_w, 2)),
+    MFW(pop_w))
+end 
 
 
 """
