@@ -14,12 +14,12 @@
     =#
 
 using CSV
-using GLM 
+#using GLM 
 using DataFrames
 using DataFramesMeta
 using StatsBase
-using StaticArrays 
-using LinearAlgebra 
+#using StaticArrays 
+#using LinearAlgebra 
 using Statistics
 using Random 
 
@@ -27,19 +27,23 @@ using Random
 
 # NB: the underlying objects here are mutable, even though the struct is not
 struct products  
-    ndcs::Vector{String}    
-    shares::Vector{Float64}
-    characteristics::Matrix{Real}
-    δ::Vector{Float64}
+    ndcs::Vector{String}           # an identifier
+    shares::Vector{Float64}        # market shares (data)
+    characteristics::Matrix{Real}  # a collection of characteristics 
+    δ::Vector{Float64}             # mean utilities 
 end 
 
-
-struct demo 
-    labels::Vector{Symbol}
-    categories::Matrix{Real}
-    weights::StatsBase.FrequencyWeights 
+# TODO - make these, collect them, distribute them by market?  
+struct mkt_demo 
+    name::String                          # what market 
+    labels::Vector{Symbol}                # names of the characteristic categories 
+    categories::Array{Array{Int64,1},1}   # categories as one-hot vectors - NB this doesn't cover everything 
+    weights::StatsBase.FrequencyWeights   # weights to sample the categories 
 end 
 
+struct all_demos 
+    v::Vector{mkt_demo}
+end 
 
 struct market
     ID::Int
@@ -130,6 +134,7 @@ function OH(N)
     end 
     return outp
 end 
+
 
 """
 `Sampler(n, x...)`
@@ -471,9 +476,9 @@ end
 function MKT()
     pop_w = convert(Array{Float64,2}, mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]])
 
-    pop_w = demo([:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus],
+    pop_w = mkt_demo(mkt_chars[1,2], [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus],
     OH(size(pop_w, 2)),
-    MFW(pop_w))
+    FW(pop_w[1,:]))
 end 
 
 
