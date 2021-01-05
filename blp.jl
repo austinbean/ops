@@ -218,12 +218,6 @@ end
 
 
 
-### TODO 
-function DemographicParams(x...)
-    # do I need something like this?  
-    return nothing 
-end 
-
 
 """
 `PredUtil(arr::Array, params::Array, δ::Array)`
@@ -240,21 +234,26 @@ This should operate in-place on the vector δ
 
 
 ## TEST ##
-shares = MarketShares(:yr, :ndc_code, :market_shares)
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
-    
+cinc = markets[:,:,10];
+mean_u = zeros(948);
+PredShare(cinc, params_indices[1], zeros(948), charcs, mean_u)
+
 """
-function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array, tmp::Array)
+function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array)
     @assert ndims(mkt) == 2               # want to operate within a market only.  
     characs, individuals = size(mkt)      # number of features, number of individuals.  
     num_prods, num_chars = size(products) # number of products, number of product characteristics 
    # @assert # check dims of δ and products - must be one for each.  
-    ZeroOut(mean_utils)
+    ind_utils = zeros(num_prods)
+    ZeroOut(mean_utils)                   # zero out mean utils 
     for i = 1:individuals
-        mean_utils[j] += Utils( mkt[:,i], products, δ, params, mean) # computes utility for ALL products in market for one person
+        mean_utils += Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
     end
+    mean_utils /= individuals             # take mean over individuals in the market - divide by N_individuals. 
 end 
 
 
