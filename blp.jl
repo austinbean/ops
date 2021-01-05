@@ -244,6 +244,7 @@ shares = MarketShares(:yr, :ndc_code, :market_shares)
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
+    
 """
 function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array, tmp::Array)
     @assert ndims(mkt) == 2               # want to operate within a market only.  
@@ -251,11 +252,9 @@ function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_u
     num_prods, num_chars = size(products) # number of products, number of product characteristics 
    # @assert # check dims of δ and products - must be one for each.  
     ZeroOut(mean_utils)
-   for j = 1:num_prods
-        for i = 1:individuals
-            mean_utils[j] += Utils()
-        end
-    end 
+    for i = 1:individuals
+        mean_utils[j] += Utils( mkt[:,i], products, δ, params, mean) # computes utility for ALL products in market for one person
+    end
 end 
 
 
@@ -267,9 +266,17 @@ Compute the utility over all products for a single simulated person in the marke
 - `δ` is an array of the current mean utilities 
 - `params` is an array of the current set of parameters
 - `utils` is an array w/ dimension equal to that of the products in the market.
-- NB: operates in-place on the vector utils, which is reset to zero every time.  
+- NB: operates in-place on the vector utils, which is reset to zero every time.  Cuts allocations
 
 Products, δ must be in the same order
+
+
+This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
+- δ a mean util
+- x^k_jt are characteristics getting a random coefficient.  
+- σ_k a parameter multiplying a shock
+- D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
+
 
 ## TEST ##
 shares = MarketShares(:yr, :ndc_code, :market_shares)
@@ -279,19 +286,8 @@ cinc = markets[:,:,10]
 Util(cinc[:,1], charcs, zeros(948), params_indices[1], zeros(948))
 
 ## Known answer test case ##
-
-Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1 1 1], [0 0 0])
-# TODO - this looks right but check.  
-[0.711235  0.0962551  0.0962551]
-
-Then I just need the product of a few elements in prod_charcs × (params*demos)
-
-So, need exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
-- δ a mean util
-- x^k_jt are characteristics getting a random coefficient.  
-- σ_k a parameter multiplying a shock
-- D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
-
+ 
+Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 """
 function Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
@@ -303,15 +299,15 @@ function Util(demographics::Array, products_char::Array, δ::Array, params::Arra
             tmp_sum += products_char[i,j]*(params'*demographics) 
         end 
         utils[i] += tmp_sum 
-    end    
-    mx_u = maximum(utils)                             # max for numerical stability
-    sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))         # denominator: 1+ sum (exp ( util - mx_u))
-    utils = (exp.(utils.-mx_u))./sm                   # normalize by denominator 
+    end   
+    mx_u = maximum(utils)                              # max for numerical stability
+    sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
+    utils = (exp.(utils.-mx_u))./sm                    # normalize by denominator 
 end 
 
 """
 `ZeroOut`
-Dumb function to set a vector equal to zero.
+Dumb function to set a vector or any array equal to zero.
 """
 function ZeroOut(x)
     for i = 1:length(x)
