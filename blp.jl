@@ -260,13 +260,14 @@ end
 
 
 """
-`Util`
+`Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)`
 Compute the utility over all products for a single simulated person in the market 
 - `demographics` is an array of demographics for an individual
-- `products` is an array of features 
+- `products_char` is an array of features 
 - `δ` is an array of the current mean utilities 
 - `params` is an array of the current set of parameters
 - `utils` is an array w/ dimension equal to that of the products in the market.
+- NB: operates in-place on the vector utils, which is reset to zero every time.  
 
 Products, δ must be in the same order
 
@@ -275,11 +276,13 @@ shares = MarketShares(:yr, :ndc_code, :market_shares)
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10]
-    # SO FAR - this doesn't error and returns something of the right dimension.  A start!  
-    But definitely wrong, b/c many values are negative.  
 Util(cinc[:,1], charcs, zeros(948), params_indices[1], zeros(948))
 
-TODO - get a case where the answer is obvious.
+## Known answer test case ##
+
+Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1 1 1], [0 0 0])
+# TODO - this looks right but check.  
+[0.711235  0.0962551  0.0962551]
 
 Then I just need the product of a few elements in prod_charcs × (params*demos)
 
@@ -291,22 +294,19 @@ So, need exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) 
 
 """
 function Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)
-    ZeroOut(utils)              # will hold utility for one guy over all of the products 
+    ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
     for i = 1:num_prods 
-        tmp_sum = 0.0           # reset the running utility for each person. 
-        tmp_sum += δ[i]         # product-specific part 
-        # TODO - this can be redone so that it doesn't require keeping track of this 3.
-        for j = 3:num_chars # "3" is an annoying constant - first two columns are market and product IDs.
-            tmp_sum += products_char[i,j]*(params'*demographics) # should just be able to take dot of params, individual 
+        tmp_sum = 0.0                                  # reset the running utility for each person. 
+        tmp_sum += δ[i]                                # product-specific part 
+        for j = 3:num_chars                            # TODO - this can be redone so that it doesn't require keeping track of this 3.
+            tmp_sum += products_char[i,j]*(params'*demographics) 
         end 
         utils[i] += tmp_sum 
     end    
-    
-    mx_u = maximum(utils)       # max for numerical stability
-    sm = sum(exp.(utils.-mx_u)) # denominator: sum (exp ( util - mx_u))
-    utils = utils./sm                 # normalize by denominator 
-    return utils  
+    mx_u = maximum(utils)                             # max for numerical stability
+    sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))         # denominator: 1+ sum (exp ( util - mx_u))
+    utils = (exp.(utils.-mx_u))./sm                   # normalize by denominator 
 end 
 
 """
