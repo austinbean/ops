@@ -215,7 +215,34 @@ function PopMarkets(M, S, Ch, x...)
     return outp 
 end 
 
+"""
+`AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array, mean_utils::Array)`
+- `mkts` - a collection of markets
+- `params` - current parameter values 
+- `δ` - mean utilities 
+- `products` - product characteristics
+- `mean_utils` - output, shares across markets 
 
+This will compute the predicted market shares across all of the markets given in `mkts`.
+Operates in-place on mean_utils.
+
+## TEST ##
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+params_indices, markets = MKT(10,3);
+    # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
+cinc = markets[:,:,10];
+mean_u = zeros(948, 52);
+AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
+"""
+function AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array, mean_utils::Array)
+    param_dim, n_individuals, n_markets = size(mkts)
+    n_products, n_chars = size(products)
+    tmp = zeros(Float64, n_products)
+    for m = 1:n_markets
+        mean_utils[:,m] = PredShare(mkts[:,:,m], params, δ, products, tmp)
+    end 
+end 
 
 
 
@@ -242,6 +269,13 @@ cinc = markets[:,:,10];
 mean_u = zeros(948);
 PredShare(cinc, params_indices[1], zeros(948), charcs, mean_u)
 
+## Test All markets ##
+
+for i = 1:size(markets,3)
+    PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, mean_u)
+end
+
+TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 """
 function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array)
     @assert ndims(mkt) == 2               # want to operate within a market only.  
