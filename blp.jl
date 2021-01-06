@@ -224,7 +224,7 @@ end
 - `mean_utils` - output, shares across markets 
 
 This will compute the predicted market shares across all of the markets given in `mkts`.
-Operates in-place on mean_utils.
+Operates in-place on mean_utils.  Ordered returned is products × markets in mean_utils.
 
 ## TEST ##
 shares = MarketShares(:yr, :ndc_code, :market_shares);
@@ -255,7 +255,7 @@ This should operate in-place on the vector δ
 - `params` current value of all parameters 
 - `δ` current value of mean utilities 
 - `products` set of items and their characteristics, by market 
-- `mean_utils` temporary collection to put the mean new mean utils
+- `mean_utils` temporary collection to put the mean new market_shares
 
 ∑_ns exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
 
@@ -310,6 +310,7 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 - σ_k a parameter multiplying a shock
 - D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
 
+TODO - can cut the allocation a little by removing tmp_sum and making it a float in the argument?  
 
 ## TEST ##
 shares = MarketShares(:yr, :ndc_code, :market_shares)
@@ -349,6 +350,50 @@ function ZeroOut(x)
 end 
 
 
+
+
+"""
+`Contraction()`
+
+Computes the contraction within a single market.
+
+This should be:
+
+δ^{t+1} = δ^{t} + log S_{.t} - log ( s_{.t}( ... ) )
+- δ^t is previous iteration of values 
+- log S_{.t} is log market shares from data 
+- log (s_{.t} (...) ) are log computed market shares. 
+- Uses a more numerically stable iteration computed using exp.(δ^t)
+
+## Test ## 
+
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+params_indices, markets = MKT(10,3);
+    # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
+cinc = markets[:,:,10];
+market_shares = zeros(948, 52);
+δ = rand(948);  #  initialize random
+new_δ = zeros(948) # initialize zero - should be fine.    
+AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
+
+Contraction(shares[:,3], market_shares[:,1], δ, new_δ)
+"""
+function Contraction(empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
+    ctr = 1 # keep a counter for debug 
+    conv = 1.0
+    curr_its = 1
+    δ = exp.(δ) # to use the more numerically stable iteration 
+    while (conv > ϵ) & (curr_its < max_it)
+        #new_δ = δ.*(empirical_shares./predicted_shares)
+            # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time.  
+        new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
+        conv = norm(new_δ - δ, 2)
+        curr_its += 1
+        δ = new_δ
+        println("diff: ", conv, " its: ", curr_its)
+    end 
+end 
 
 """
 `NormalizeVar(x)`
