@@ -283,6 +283,7 @@ function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_u
     num_prods, num_chars = size(products) # number of products, number of product characteristics 
    # @assert # check dims of δ and products - must be one for each.  
     ind_utils = zeros(num_prods)
+    # TODO - if these are effectively the shares then zeroing out is going to fuck it up.  
     ZeroOut(mean_utils)                   # zero out mean utils 
     for i = 1:individuals
         mean_utils += Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
@@ -378,6 +379,8 @@ new_δ = zeros(948) # initialize zero - should be fine.
 AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
 
 Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
+
+
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
     ctr = 1 # keep a counter for debug 
@@ -385,17 +388,23 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
     curr_its = 1
     #δ = exp.(δ) # to use the more numerically stable iteration 
     while (conv > ϵ) & (curr_its < max_it)
-        #new_δ = δ.*(empirical_shares./predicted_shares)
             # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
-        new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
+        println("new δ before update: ", new_δ[1:10])
+        new_δ = δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.  
+        #new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
+        println("new δ after update: ", new_δ[1:10])
         conv = norm(new_δ - δ, 2)
         curr_its += 1
         δ = new_δ
         # now update the δ
-        println("delta before ", δ[1:10])
+        println("⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆")
+        println(" before share update", predicted_shares)
+        # TODO - maybe the predicted_shares are not getting updated in this equation.  
         PredShare(mkt, params, δ, products, predicted_shares)
-        println("delta after ", δ[1:10])
+        println("†††††††††††††††††††††††††††††† ")
+        println(" after share update ", predicted_shares)
         println("diff: ", conv, " its: ", curr_its)
+        println("**************")
     end 
 end 
 
