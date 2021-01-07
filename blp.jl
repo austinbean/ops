@@ -277,18 +277,18 @@ end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 """
-function PredShare(mkt::Array, params::Array, δ::Array, products::Array, mean_utils::Array)
+function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array)
     @assert ndims(mkt) == 2               # want to operate within a market only.  
     characs, individuals = size(mkt)      # number of features, number of individuals.  
     num_prods, num_chars = size(products) # number of products, number of product characteristics 
    # @assert # check dims of δ and products - must be one for each.  
     ind_utils = zeros(num_prods)
-    # TODO - if these are effectively the shares then zeroing out is going to fuck it up.  
-    ZeroOut(mean_utils)                   # zero out mean utils 
+    ZeroOut(market_shares)                   # zero out mean utils 
     for i = 1:individuals
-        mean_utils += Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
+        market_shares += Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
     end
-    mean_utils /= individuals             # take mean over individuals in the market - divide by N_individuals. 
+    market_shares /= individuals             # take mean over individuals in the market - divide by N_individuals. 
+    println("market shares: ", market_shares[1:10], " max ", maximum(market_shares), " min ", minimum(market_shares))
 end 
 
 
@@ -380,6 +380,7 @@ AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
 
 Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
 
+# TODO - too many products w/ very small shares?  
 
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
@@ -390,19 +391,19 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
     while (conv > ϵ) & (curr_its < max_it)
             # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
         println("new δ before update: ", new_δ[1:10])
-        new_δ = δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.  
-        #new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
+        new_δ = δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           #new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
         println("new δ after update: ", new_δ[1:10])
         conv = norm(new_δ - δ, 2)
         curr_its += 1
         δ = new_δ
         # now update the δ
         println("⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆")
-        println(" before share update", predicted_shares)
+        println(" before share update", maximum(predicted_shares), " ", minimum(predicted_shares))
         # TODO - maybe the predicted_shares are not getting updated in this equation.  
+            # worse - they are getting set to 0.  
         PredShare(mkt, params, δ, products, predicted_shares)
         println("†††††††††††††††††††††††††††††† ")
-        println(" after share update ", predicted_shares)
+        println(" after share update ", maximum(predicted_shares), " ", minimum(predicted_shares))
         println("diff: ", conv, " its: ", curr_its)
         println("**************")
     end 
