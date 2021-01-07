@@ -377,20 +377,24 @@ market_shares = zeros(948, 52);
 new_δ = zeros(948) # initialize zero - should be fine.    
 AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
 
-Contraction(shares[:,3], market_shares[:,1], δ, new_δ)
+Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
 """
-function Contraction(empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
+function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
     ctr = 1 # keep a counter for debug 
     conv = 1.0
     curr_its = 1
-    δ = exp.(δ) # to use the more numerically stable iteration 
+    #δ = exp.(δ) # to use the more numerically stable iteration 
     while (conv > ϵ) & (curr_its < max_it)
         #new_δ = δ.*(empirical_shares./predicted_shares)
-            # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time.  
+            # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
         new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
         conv = norm(new_δ - δ, 2)
         curr_its += 1
         δ = new_δ
+        # now update the δ
+        println("delta before ", δ[1:10])
+        PredShare(mkt, params, δ, products, predicted_shares)
+        println("delta after ", δ[1:10])
         println("diff: ", conv, " its: ", curr_its)
     end 
 end 
