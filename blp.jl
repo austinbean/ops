@@ -232,22 +232,31 @@ charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, 
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
-mean_u = zeros(948, 52);
-AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
+
+#function f1()
+    mean_u = zeros(948, 52);
+    AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
+    return mean_u 
+end 
+f1()
+ - still not getting updated.  
+## TODO ##
+δ is market specific too.  Needs to be products × markets  
 """
 function AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array, mean_utils::Array)
     param_dim, n_individuals, n_markets = size(mkts)
     n_products, n_chars = size(products)
-    tmp = zeros(Float64, n_products)
+    ind_utils = zeros(n_products)
     for m = 1:n_markets
-        mean_utils[:,m] = PredShare(mkts[:,:,m], params, δ, products, tmp)
+        PredShare(mkts[:,:,m], params, δ, products, mean_utils[:,m], ind_utils)
     end 
+   # println(mean_utils )
 end 
 
 
 
 """
-`PredUtil(arr::Array, params::Array, δ::Array)`
+`PredShare(arr::Array, params::Array, δ::Array)`
 Should take a single market, return mean util across a bunch of products.
 To cut allocations, pass a vector to hold the utilities.  
 This should operate in-place on the vector δ
@@ -267,28 +276,34 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 mean_u = zeros(948);
-PredShare(cinc, params_indices[1], zeros(948), charcs, mean_u)
+ind_u = zeros(948);
+PredShare(cinc, params_indices[1], zeros(948), charcs, mean_u, ind_u)
+mean_u[1:10]
 
 ## Test All markets ##
 
 for i = 1:size(markets,3)
-    PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, mean_u)
+    ## PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, mean_u)
 end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
+TODO - ind_utils can be pre-allocated at a higher level.  
 """
-function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array)
+function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array, ind_utils::Array)
     @assert ndims(mkt) == 2               # want to operate within a market only.  
     characs, individuals = size(mkt)      # number of features, number of individuals.  
     num_prods, num_chars = size(products) # number of products, number of product characteristics 
    # @assert # check dims of δ and products - must be one for each.  
-    ind_utils = zeros(num_prods)
-    ZeroOut(market_shares)                   # zero out mean utils 
+    #ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
-        market_shares += Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
+        # TODO - how is this assignment working?  Util returns nothing.  Not true.  Returns last thing, I'll bet. 
+        # yes, does return.  Hmm... 
+        # 
+        Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
+        market_shares += ind_utils 
     end
     market_shares /= individuals             # take mean over individuals in the market - divide by N_individuals. 
-    println("market shares: ", market_shares[1:10], " max ", maximum(market_shares), " min ", minimum(market_shares))
+    return nothing 
 end 
 
 
@@ -318,7 +333,8 @@ shares = MarketShares(:yr, :ndc_code, :market_shares)
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10]
-Util(cinc[:,1], charcs, zeros(948), params_indices[1], zeros(948))
+utils = zeros(948);
+Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils )
 
 ## Known answer test case ##
  
@@ -338,6 +354,7 @@ function Util(demographics::Array, products_char::Array, δ::Array, params::Arra
     mx_u = maximum(utils)                              # max for numerical stability
     sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
     utils = (exp.(utils.-mx_u))./sm                    # normalize by denominator 
+    return nothing                                     # make sure this doesn't return, but operates on utils in place
 end 
 
 """
@@ -375,7 +392,7 @@ params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
 market_shares = zeros(948, 52);
 δ = rand(948);  #  initialize random
-new_δ = zeros(948) # initialize zero - should be fine.    
+new_δ = rand(948) # initialize zero - should be fine.    
 AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
 
 Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
@@ -387,7 +404,7 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
     ctr = 1 # keep a counter for debug 
     conv = 1.0
     curr_its = 1
-    #δ = exp.(δ) # to use the more numerically stable iteration 
+    δ = exp.(δ) # to use the more numerically stable iteration 
     while (conv > ϵ) & (curr_its < max_it)
             # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
         println("new δ before update: ", new_δ[1:10])
