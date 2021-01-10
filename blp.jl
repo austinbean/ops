@@ -275,10 +275,10 @@ charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, 
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
-mean_u = zeros(948);
+mu = zeros(948);
 ind_u = zeros(948);
-PredShare(cinc, params_indices[1], zeros(948), charcs, mean_u, ind_u)
-mean_u[1:10]
+PredShare(cinc, params_indices[1], zeros(948), charcs, mu, ind_u)
+mu[1:10]
 
 ## Test All markets ##
 
@@ -290,19 +290,50 @@ TODO - mean_utils should be an array with dimension equal to the number of marke
 TODO - ind_utils can be pre-allocated at a higher level.  
 """
 function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array, ind_utils::Array)
-    @assert ndims(mkt) == 2               # want to operate within a market only.  
     characs, individuals = size(mkt)      # number of features, number of individuals.  
-    num_prods, num_chars = size(products) # number of products, number of product characteristics 
-   # @assert # check dims of δ and products - must be one for each.  
     #ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
+    println("shares prior: ", market_shares[1:10])
     for i = 1:individuals
-        # TODO - how is this assignment working?  Util returns nothing.  Not true.  Returns last thing, I'll bet. 
-        # yes, does return.  Hmm... 
-        # 
+        # TODO - this function does not update the values in market_shares, as I would expect.  
         Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
         market_shares += ind_utils 
     end
-    market_shares /= individuals             # take mean over individuals in the market - divide by N_individuals. 
+    println("market shares: ", market_shares[1:10])
+    # market_shares += market_shares #individuals             # take mean over individuals in the market - divide by N_individuals. 
+    return nothing  
+end 
+
+
+#=
+
+
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+params_indices, markets = MKT(10,3);
+cinc = markets[:,:,10];
+δ = zeros(948);
+mus = zeros(948);
+mks = zeros(948);
+println(mus[1:10])
+varshare(cinc, params_indices[1], δ, charcs, mks, mus )
+println(mks[1:10])
+
+TODO - maybe Utils isn't working the way I think it is working?  
+# there is something about nested in-place updating which I am not grasping correctly.  Do another example.  
+
+=# 
+function varshare(mkt::Array, params::Array, δ::Array, products::Array, mks::Array, us::Array)
+    # call Utils n_individuals times, fill in us, add to shrs, then return normalized value.
+    individuals = size(mkt,2)
+    for i = 1:individuals 
+        println("mks before: ", mks[1:10])
+        Util(mkt[:,i], products, δ, params, us)
+        # this returns nothing but can still be added to other vectors?  
+        mks .+= us 
+        println("mks after: ", mks[1:10])
+    end 
+    mks/=individuals # wait this isn't working either??? this is * 10, not /10 at the moment?  
+    println("finally ", mks[1:10])
     return nothing 
 end 
 
