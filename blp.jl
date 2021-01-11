@@ -296,7 +296,7 @@ function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market
     for i = 1:individuals
         # TODO - this function does not update the values in market_shares, as I would expect.  
         Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
-        market_shares += ind_utils 
+        market_shares .+= ind_utils  # FIXME - check that this .+= change works
     end
     println("market shares: ", market_shares[1:10])
     # market_shares += market_shares #individuals             # take mean over individuals in the market - divide by N_individuals. 
