@@ -233,12 +233,11 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 
-#function f1()
-    mean_u = zeros(948, 52);
-    AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
-    return mean_u 
-end 
-f1()
+mean_u = zeros(948, 52);
+AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
+
+mean_u 
+
  - still not getting updated.  
 ## TODO ##
 δ is market specific too.  Needs to be products × markets  
@@ -249,14 +248,16 @@ function AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array,
     ind_utils = zeros(n_products)
     for m = 1:n_markets
         PredShare(mkts[:,:,m], params, δ, products, mean_utils[:,m], ind_utils)
+        println("LT zero shares: ", sum(mean_utils.<=0))
     end 
-   # println(mean_utils )
+    println("LT zero shares: ", sum(mean_utils.<=0))
+   return nothing 
 end 
 
 
 
 """
-`PredShare(arr::Array, params::Array, δ::Array)`
+`PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array, ind_utils::Array)`
 Should take a single market, return mean util across a bunch of products.
 To cut allocations, pass a vector to hold the utilities.  
 This should operate in-place on the vector δ
@@ -281,61 +282,26 @@ PredShare(cinc, params_indices[1], zeros(948), charcs, mu, ind_u)
 mu[1:10]
 
 ## Test All markets ##
-
+muts = zeros(948, 52)
 for i = 1:size(markets,3)
-    ## PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, mean_u)
+    PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, muts[:,i], ind_u)
+    println("LT zero shares: ", sum(muts.<=0))
 end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 TODO - ind_utils can be pre-allocated at a higher level.  
 """
 function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array, ind_utils::Array)
-    characs, individuals = size(mkt)      # number of features, number of individuals.  
-    #ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
-    println("shares prior: ", market_shares[1:10])
+    characs, individuals = size(mkt)         # number of features, number of individuals.  
+    ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
-        # TODO - this function does not update the values in market_shares, as I would expect.  
         Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
-        market_shares .+= ind_utils  # FIXME - check that this .+= change works
+        market_shares .+= ind_utils          # FIXME - check that this .+= change works
     end
-    println("market shares: ", market_shares[1:10])
-    # market_shares += market_shares #individuals             # take mean over individuals in the market - divide by N_individuals. 
+    market_shares ./=individuals             # take mean over individuals in the market - divide by N_individuals. 
     return nothing  
 end 
 
-
-#=
-
-
-shares = MarketShares(:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
-cinc = markets[:,:,10];
-δ = zeros(948);
-mus = zeros(948);
-mks = zeros(948);
-println(mus[1:10])
-varshare(cinc, params_indices[1], δ, charcs, mks, mus )
-println(mks[1:10])
-
-TODO - maybe Utils isn't working the way I think it is working?  
-# there is something about nested in-place updating which I am not grasping correctly.  Do another example.  
-
-=# 
-function varshare(mkt::Array, params::Array, δ::Array, products::Array, mks::Array, us::Array)
-    # call Utils n_individuals times, fill in us, add to shrs, then return normalized value.
-    individuals = size(mkt,2)
-    for i = 1:individuals 
-        println("mks before: ", mks[1:10])
-        Util(mkt[:,i], products, δ, params, us)
-        # this returns nothing but can still be added to other vectors?  
-        mks .+= us 
-        println("mks after: ", mks[1:10])
-    end 
-    mks/=individuals # wait this isn't working either??? this is * 10, not /10 at the moment?  
-    println("finally ", mks[1:10])
-    return nothing 
-end 
 
 
 """
@@ -370,6 +336,8 @@ Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils )
 ## Known answer test case ##
  
 Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
+
+TODO - a lot of these are negative, which is happening how exactly???  
 """
 function Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
@@ -384,7 +352,7 @@ function Util(demographics::Array, products_char::Array, δ::Array, params::Arra
     end   
     mx_u = maximum(utils)                              # max for numerical stability
     sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
-    utils = (exp.(utils.-mx_u))./sm                    # normalize by denominator 
+    utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
     return nothing                                     # make sure this doesn't return, but operates on utils in place
 end 
 
@@ -439,7 +407,7 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
     while (conv > ϵ) & (curr_its < max_it)
             # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
         println("new δ before update: ", new_δ[1:10])
-        new_δ = δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           #new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
+        new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           #new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
         println("new δ after update: ", new_δ[1:10])
         conv = norm(new_δ - δ, 2)
         curr_its += 1
