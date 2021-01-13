@@ -247,17 +247,18 @@ function AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array,
     n_products, n_chars = size(products)
     ind_utils = zeros(n_products)
     for m = 1:n_markets
-        PredShare(mkts[:,:,m], params, δ, products, mean_utils[:,m], ind_utils)
-        println("LT zero shares: ", sum(mean_utils.<=0))
+        mu = @view mean_utils[:,m]
+        mk = @view mkts[:,:,m]
+        PredShare(mk, params, δ, products, mu, ind_utils)
     end 
-    println("LT zero shares: ", sum(mean_utils.<=0))
+    println("LT zero shares: last one ", sum(mean_utils.<=0))
    return nothing 
 end 
 
 
 
 """
-`PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array, ind_utils::Array)`
+`PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)`
 Should take a single market, return mean util across a bunch of products.
 To cut allocations, pass a vector to hold the utilities.  
 This should operate in-place on the vector δ
@@ -265,7 +266,8 @@ This should operate in-place on the vector δ
 - `params` current value of all parameters 
 - `δ` current value of mean utilities 
 - `products` set of items and their characteristics, by market 
-- `mean_utils` temporary collection to put the mean new market_shares
+- `market_shares` temporary collection to put the mean new market_shares
+- `ind_utils` container for utilites, called in Utils.
 
 ∑_ns exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
 
@@ -283,15 +285,17 @@ mu[1:10]
 
 ## Test All markets ##
 muts = zeros(948, 52)
-for i = 1:size(markets,3)
-    PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, muts[:,i], ind_u)
+for i = 1:size(markets,3) 
+    b = @view muts[:,i] # note this!
+    PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, b, ind_u)
     println("LT zero shares: ", sum(muts.<=0))
 end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 TODO - ind_utils can be pre-allocated at a higher level.  
+
 """
-function PredShare(mkt::Array, params::Array, δ::Array, products::Array, market_shares::Array, ind_utils::Array)
+function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)
     characs, individuals = size(mkt)         # number of features, number of individuals.  
     ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
