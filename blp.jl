@@ -238,7 +238,6 @@ AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
 
 mean_u 
 
- - still not getting updated.  
 ## TODO ##
 δ is market specific too.  Needs to be products × markets  
 """
@@ -341,7 +340,6 @@ Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils )
  
 Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
-TODO - a lot of these are negative, which is happening how exactly???  
 """
 function Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
@@ -400,18 +398,22 @@ AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
 
 Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
 
-# TODO - too many products w/ very small shares?  
+# TODO - too many products w/ very small shares?  many of empirical_shares./predicted_shares are very very large 
+Could maybe start w/ dampening until good params are found.  
 
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
     ctr = 1 # keep a counter for debug 
     conv = 1.0
     curr_its = 1
+    us = zeros(948)
     δ = exp.(δ) # to use the more numerically stable iteration 
     while (conv > ϵ) & (curr_its < max_it)
             # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
+        println("how big are these: ", empirical_shares./predicted_shares)
         println("new δ before update: ", new_δ[1:10])
-        new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           #new_δ = δ + log.(empirical_shares) - log.(predicted_shares)
+        new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
+        #new_δ .= δ .+ log.(empirical_shares) .- log.(predicted_shares)
         println("new δ after update: ", new_δ[1:10])
         conv = norm(new_δ - δ, 2)
         curr_its += 1
@@ -421,7 +423,8 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
         println(" before share update", maximum(predicted_shares), " ", minimum(predicted_shares))
         # TODO - maybe the predicted_shares are not getting updated in this equation.  
             # worse - they are getting set to 0.  
-        PredShare(mkt, params, δ, products, predicted_shares)
+        ZeroOut(us)
+        PredShare(mkt, params, δ, products, predicted_shares, us)
         println("†††††††††††††††††††††††††††††† ")
         println(" after share update ", maximum(predicted_shares), " ", minimum(predicted_shares))
         println("diff: ", conv, " its: ", curr_its)
