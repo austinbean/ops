@@ -246,9 +246,11 @@ function AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array,
     n_products, n_chars = size(products)
     ind_utils = zeros(n_products)
     for m = 1:n_markets
-        mu = @view mean_utils[:,m]
+        # TODO - something is wrong.  B/c pred share generates shares which sum to one.
+        mu = @view mean_utils[:,m] 
         mk = @view mkts[:,:,m]
         PredShare(mk, params, δ, products, mu, ind_utils)
+        #println("mu? ", sum(mu))
     end 
     println("LT zero shares: last one ", sum(mean_utils.<=0))
    return nothing 
@@ -278,30 +280,42 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 mu = zeros(948);
-ind_u = zeros(948);
+ind_u = zeros(948); 
 PredShare(cinc, params_indices[1], zeros(948), charcs, mu, ind_u)
-mu[1:10]
+sum(ind_u) # does sum to nearly one.  
 
 ## Test All markets ##
 muts = zeros(948, 52)
 for i = 1:size(markets,3) 
     b = @view muts[:,i] # note this!
+        # TODO - not that ind_u sums to 1, but b does not.  
     PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, b, ind_u)
-    println("LT zero shares: ", sum(muts.<=0))
+    println("pred share: ", sum(b)) # this is a puzzle...  is there something I'm not fixing?  
+   # println("LT zero shares: ", sum(muts.<=0))
 end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 TODO - ind_utils can be pre-allocated at a higher level.  
+TODO - this does not generate shares approximately 1 w/in a market, as it must.  
+
+
 
 """
 function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)
     characs, individuals = size(mkt)         # number of features, number of individuals.  
     ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
-        Util( mkt[:,i], products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
+        # TODO - this function does not always sum to 1 across all individuals - why is that?  
+        v1 = @view mkt[:,i]
+        Util( v1, products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
+        println("sum utils inside: ", sum(ind_utils))
         market_shares .+= ind_utils          # FIXME - check that this .+= change works
     end
+        # this is weird... why don't these sum to 1?  
+    println("mkt ", sum(market_shares), " num individuals ", individuals)
     market_shares ./=individuals             # take mean over individuals in the market - divide by N_individuals. 
+    println("sum ", sum(market_shares))
+    println("uts ", sum(ind_utils))
     return nothing  
 end 
 
@@ -334,14 +348,21 @@ charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, 
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10]
 utils = zeros(948);
+δ = zeros(948);
 Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils )
+
+## Test Across individuals.  
+
+for i =1:size(cinc,2)
+    Utils(cinc)
+end 
 
 ## Known answer test case ##
  
 Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
 """
-function Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)
+function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
     for i = 1:num_prods 
