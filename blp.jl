@@ -246,13 +246,10 @@ function AllMarketShares(mkts::Array, params::Array, δ::Array, products::Array,
     n_products, n_chars = size(products)
     ind_utils = zeros(n_products)
     for m = 1:n_markets
-        # TODO - something is wrong.  B/c pred share generates shares which sum to one.
         mu = @view mean_utils[:,m] 
         mk = @view mkts[:,:,m]
         PredShare(mk, params, δ, products, mu, ind_utils)
-        #println("mu? ", sum(mu))
     end 
-    println("LT zero shares: last one ", sum(mean_utils.<=0))
    return nothing 
 end 
 
@@ -305,17 +302,11 @@ function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares
     characs, individuals = size(mkt)         # number of features, number of individuals.  
     ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
-        # TODO - this function does not always sum to 1 across all individuals - why is that?  
         v1 = @view mkt[:,i]
         Util( v1, products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
-        println("sum utils inside: ", sum(ind_utils))
-        market_shares .+= ind_utils          # FIXME - check that this .+= change works
+        market_shares .+= ind_utils          
     end
-        # this is weird... why don't these sum to 1?  
-    println("mkt ", sum(market_shares), " num individuals ", individuals)
     market_shares ./=individuals             # take mean over individuals in the market - divide by N_individuals. 
-    println("sum ", sum(market_shares))
-    println("uts ", sum(ind_utils))
     return nothing  
 end 
 
@@ -373,7 +364,6 @@ Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.71123459422759
 function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
-    # weirdly the problem might be in here?  but how?  
     for i = 1:num_prods 
         tmp_sum = 0.0                                  # reset the running utility for each person. 
         tmp_sum += δ[i]                                # product-specific part 
