@@ -288,7 +288,6 @@ sum(ind_u) # does sum to nearly one.
 shares = MarketShares(:yr, :ndc_code, :market_shares);
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
-charcs[:,3] .= NormalizeVar(charcs[:,3]) ;
 muts = zeros(948, 52);
 ind_u = zeros(948); 
 for i = 1:size(markets,3) 
@@ -355,7 +354,6 @@ Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils );
 ## Test Across individuals. 
 shares = MarketShares(:yr, :ndc_code, :market_shares);
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-charcs[:,3] .= NormalizeVar(charcs[:,3]) ;
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
 utils = zeros(948);
@@ -678,6 +676,8 @@ end
 `ProductChars(Characteristics...)`
 Takes a set `Characteristics` of column indexes in the file and returns the characteristics 
 
+TODO - make sure all future continuous variables are normalized.
+
 ## TEST ### 
 
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
@@ -687,6 +687,12 @@ function ProductChars(Characteristics...)
     market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
     #wanted_characteristics = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL ] ]
     wanted_characteristics = market_shares[!, [Characteristics...] ]
+
+        # normalize cts vars.
+    b1 = @view wanted_characteristics[:, 3]
+    wanted_characteristics[:,3] .= NormalizeVar(b1)
+
+
     return convert(Array{Real,2}, wanted_characteristics)
 end 
 
