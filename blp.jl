@@ -353,8 +353,9 @@ Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils )
 
 ## Test Across individuals.  
 
-for i =1:size(cinc,2)
-    Utils(cinc)
+for i =1:size(cinc,2) 
+    Util(cinc[:,i], charcs, δ, params_indices[1], utils)
+    println(sum(utils))
 end 
 
 ## Known answer test case ##
@@ -365,6 +366,7 @@ Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.71123459422759
 function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
+    # weirdly the problem might be in here?  but how?  
     for i = 1:num_prods 
         tmp_sum = 0.0                                  # reset the running utility for each person. 
         tmp_sum += δ[i]                                # product-specific part 
@@ -373,9 +375,9 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
         end 
         utils[i] += tmp_sum 
     end   
-    mx_u = maximum(utils)                              # max for numerical stability
-    sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
-    utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
+    #mx_u = maximum(utils)                              # max for numerical stability
+    #sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
+    #utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
     return nothing                                     # make sure this doesn't return, but operates on utils in place
 end 
 
