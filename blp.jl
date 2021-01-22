@@ -285,20 +285,21 @@ PredShare(cinc, params_indices[1], zeros(948), charcs, mu, ind_u)
 sum(ind_u) # does sum to nearly one.  
 
 ## Test All markets ##
-muts = zeros(948, 52)
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+params_indices, markets = MKT(10,3);
+charcs[:,3] .= NormalizeVar(charcs[:,3]) ;
+muts = zeros(948, 52);
+ind_u = zeros(948); 
 for i = 1:size(markets,3) 
     b = @view muts[:,i] # note this!
         # TODO - not that ind_u sums to 1, but b does not.  
     PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, b, ind_u)
-    println("pred share: ", sum(b)) # this is a puzzle...  is there something I'm not fixing?  
-   # println("LT zero shares: ", sum(muts.<=0))
+    println("pred share: ", sum(b))   
 end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 TODO - ind_utils can be pre-allocated at a higher level.  
-TODO - this does not generate shares approximately 1 w/in a market, as it must.  
-
-
 
 """
 function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)
@@ -343,19 +344,27 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 TODO - can cut the allocation a little by removing tmp_sum and making it a float in the argument?  
 
 ## TEST ##
-shares = MarketShares(:yr, :ndc_code, :market_shares)
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
-cinc = markets[:,:,10]
+cinc = markets[:,:,10];
 utils = zeros(948);
 δ = zeros(948);
-Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils )
+Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils );
 
-## Test Across individuals.  
-
+## Test Across individuals. 
+shares = MarketShares(:yr, :ndc_code, :market_shares);
+charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+charcs[:,3] .= NormalizeVar(charcs[:,3]) ;
+params_indices, markets = MKT(10,3);
+cinc = markets[:,:,10];
+utils = zeros(948);
+δ = zeros(948);
 for i =1:size(cinc,2) 
+    println("sum prior: ", sum(utils))
     Util(cinc[:,i], charcs, δ, params_indices[1], utils)
-    println(sum(utils))
+    println("sum after ", sum(utils))
+    println(" approx 1 ", isapprox(sum(utils),1; rtol= 0.1))
 end 
 
 ## Known answer test case ##
@@ -375,9 +384,9 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
         end 
         utils[i] += tmp_sum 
     end   
-    #mx_u = maximum(utils)                              # max for numerical stability
-    #sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
-    #utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
+    mx_u = maximum(utils)                              # max for numerical stability
+    sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
+    utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
     return nothing                                     # make sure this doesn't return, but operates on utils in place
 end 
 
