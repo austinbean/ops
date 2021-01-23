@@ -415,7 +415,6 @@ market_shares = zeros(948, 52);
 δ = rand(948);  #  initialize random
 new_δ = rand(948) # initialize zero - should be fine.    
 AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
-
 Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
 
 # TODO - too many products w/ very small shares?  many of empirical_shares./predicted_shares are very very large 
@@ -430,8 +429,8 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
     δ = exp.(δ) # to use the more numerically stable iteration 
     while (conv > ϵ) & (curr_its < max_it)
             # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
-        println("how big are these: ", empirical_shares./predicted_shares)
-        println("new δ before update: ", new_δ[1:10])
+        println("how big are these: ", maximum(empirical_shares./predicted_shares), " ", minimum(empirical_shares./predicted_shares))
+        println("new δ before update: ", maximum(new_δ), " ", minimum(new_δ))
         new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
         #new_δ .= δ .+ log.(empirical_shares) .- log.(predicted_shares)
         println("new δ after update: ", new_δ[1:10])
@@ -440,7 +439,7 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
         δ = new_δ
         # now update the δ
         println("⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆")
-        println(" before share update", maximum(predicted_shares), " ", minimum(predicted_shares))
+        println(" before share update ", maximum(predicted_shares), " ", minimum(predicted_shares))
         # TODO - maybe the predicted_shares are not getting updated in this equation.  
             # worse - they are getting set to 0.  
         ZeroOut(us)
