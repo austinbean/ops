@@ -415,40 +415,45 @@ market_shares = zeros(948, 52);
 δ = rand(948);  #  initialize random
 new_δ = rand(948) # initialize zero - should be fine.    
 AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
+    # TODO - indexing here will allocate, @view instead.  
 Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
 
-# TODO - too many products w/ very small shares?  many of empirical_shares./predicted_shares are very very large 
-Could maybe start w/ dampening until good params are found.  
+# Probably this is diverging - noted in Nevo appendix.  In his implementation in meanval.m line 26/27
+"the order matters" - what does that mean?
+Am i doing it wrong b/c I am only doing one market?  
+
+another implementation: https://github.com/jeffgortmaker/pyblp/blob/b500d11efafc39d41a31730a354dd3bf9b32812f/pyblp/markets/market.py#L384
 
 """
-function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
+function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 300)
     ctr = 1 # keep a counter for debug 
     conv = 1.0
     curr_its = 1
     us = zeros(948)
-    δ = exp.(δ) # to use the more numerically stable iteration 
+    #δ = exp.(δ) # to use the more numerically stable iteration
+    outp = Array{Float64,1}()
+    mx_el = Array{Int64,1}()
     while (conv > ϵ) & (curr_its < max_it)
-            # TODO - here predicted shares are not constant, but must be recomputed w/ the new delta every time. 
-        println("how big are these: ", maximum(empirical_shares./predicted_shares), " ", minimum(empirical_shares./predicted_shares))
-        println("new δ before update: ", maximum(new_δ), " ", minimum(new_δ))
-        new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
-        #new_δ .= δ .+ log.(empirical_shares) .- log.(predicted_shares)
-        println("new δ after update: ", new_δ[1:10])
-        conv = norm(new_δ - δ, 2)
-        curr_its += 1
-        δ = new_δ
         # now update the δ
         println("⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆")
-        println(" before share update ", maximum(predicted_shares), " ", minimum(predicted_shares))
-        # TODO - maybe the predicted_shares are not getting updated in this equation.  
-            # worse - they are getting set to 0.  
+        println(" before share update ", extrema(predicted_shares))
+        println("current δ ", extrema(δ))
+        println("δ GT: ", sum(δ.>=new_δ), " δ LT: ", sum(δ.<new_δ))
         ZeroOut(us)
         PredShare(mkt, params, δ, products, predicted_shares, us)
-        println("†††††††††††††††††††††††††††††† ")
-        println(" after share update ", maximum(predicted_shares), " ", minimum(predicted_shares))
+        println(" after share update ", extrema(predicted_shares))
         println("diff: ", conv, " its: ", curr_its)
-        println("**************")
+        #new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
+        new_δ .= δ .+ (log.(empirical_shares) .- log.(predicted_shares))
+       # println("new δ after update: ", extrema(new_δ))
+        conv = maximum(abs.(new_δ .- δ))  #norm(new_δ - δ, 2)
+        push!(outp, conv)
+        curr_its += 1
+        println(findmax(new_δ .- δ)[2])
+        push!(mx_el, findmax(new_δ .- δ)[2])
+        δ .= new_δ   # assign 
     end 
+    return outp, mx_el
 end 
 
 """
