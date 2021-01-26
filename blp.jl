@@ -227,8 +227,8 @@ This will compute the predicted market shares across all of the markets given in
 Operates in-place on mean_utils.  Ordered returned is products × markets in mean_utils.
 
 ## TEST ##
-shares = MarketShares(:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
@@ -271,8 +271,8 @@ This should operate in-place on the vector δ
 
 
 ## TEST ##
-shares = MarketShares(:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
@@ -282,8 +282,8 @@ PredShare(cinc, params_indices[1], zeros(948), charcs, mu, ind_u)
 sum(ind_u) # does sum to nearly one.  
 
 ## Test All markets ##
-shares = MarketShares(:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
 muts = zeros(948, 52);
 ind_u = zeros(948); 
@@ -334,7 +334,7 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 TODO - can cut the allocation a little by removing tmp_sum and making it a float in the argument?  
 
 ## TEST ##
-shares = MarketShares(:yr, :ndc_code, :market_shares);
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
@@ -343,8 +343,8 @@ utils = zeros(948);
 Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils );
 
 ## Test Across individuals. 
-shares = MarketShares(:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
 utils = zeros(948);
@@ -406,13 +406,13 @@ This should be:
 
 ## Test ## 
 
-shares = MarketShares(:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 market_shares = zeros(948, 52);
-δ = rand(948);  #  initialize random
+δ = ;  #  initialize random
 new_δ = rand(948) # initialize zero - should be fine.    
 AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
     # TODO - indexing here will allocate, @view instead.  
@@ -423,6 +423,10 @@ Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ
 Am i doing it wrong b/c I am only doing one market?  
 
 another implementation: https://github.com/jeffgortmaker/pyblp/blob/b500d11efafc39d41a31730a354dd3bf9b32812f/pyblp/markets/market.py#L384
+
+another: MST / RCNL.f90 lines 4744 ff.
+
+Idea (?): start w/ better initial δ?  
 
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 300)
@@ -590,14 +594,16 @@ end
 
 
 """
-`MarketShares(MKT...)`
+`MarketShares(mkt_vars::Array, MKT...)`
 Doesn't do anything but import and return the market share and product characteristic data.
 Returns both the original data set and a subset called wanted_data w/ just the columns of interest. 
 - Takes a set of arguments MKT... which are column indices  
+# TODO here - split these up more effectively into markets, however divided.  
 
 ## TEST ##
 
-shares = MarketShares(:yr, :ndc_code, :market_shares)
+shares = MarketShares([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :market_shares)
+
 
 1 yr
 2 ndc_code
@@ -659,35 +665,42 @@ shares = MarketShares(:yr, :ndc_code, :market_shares)
 58 market_shares
 59 dd
 """
-function MarketShares(MKT...) # take a variable identifying the market here
-    # TODO here - split these up more effectively into markets, however divided.  
+function MarketShares(mkt_vars::Array, MKT...) # take a variable identifying the market here
+    mkts = unique(mkt_vars)
+    out1 = Array{Array{Real,2}, 1}()
     market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
     wanted_shares = market_shares[!, [MKT...]]
-    return convert(Array{Real,2}, wanted_shares)
+    # this assumes the market var is in the first column
+    for el in mkts 
+        push!(out1, convert(Array{Real,2}, wanted_shares[ (wanted_shares[:,1].==el), :]))
+    end     
+    return out1 
 end 
 
 """
-`ProductChars(Characteristics...)`
+`ProductChars(mkt_vars::Array, Characteristics...)`
 Takes a set `Characteristics` of column indexes in the file and returns the characteristics 
 
 TODO - make sure all future continuous variables are normalized.
-
+TODO - need variables to split the market up 
 ## TEST ### 
 
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
 """
-function ProductChars(Characteristics...)
+function ProductChars(mkt_vars::Array, Characteristics...)
+    mkts = unique(mkt_vars)
     # TODO - need to split into markets in the same way as MarketShares() does it.
     market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
     #wanted_characteristics = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL ] ]
     wanted_characteristics = market_shares[!, [Characteristics...] ]
-
         # normalize cts vars.
     b1 = @view wanted_characteristics[:, 3]
     wanted_characteristics[:,3] .= NormalizeVar(b1)
-
-
-    return convert(Array{Real,2}, wanted_characteristics)
+    outp = Array{Array{Real,2},1}()
+    for el in mkts
+        push!(outp, convert(Array{Real,2}, wanted_characteristics[(wanted_characteristics[:,1].==el) ,:]))
+    end
+    return outp 
 end 
 
 
