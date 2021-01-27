@@ -432,7 +432,7 @@ TODO - something is weird b/c these dot broadcasting versions do not seem to wor
 #new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
 #new_δ .= δ .+ (log.(empirical_shares) .- log.(predicted_shares))
   
-
+TODO - use the sped up version from Rynaert, Varadhan, etc.  
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
     ctr = 1 # keep a counter for debug 
