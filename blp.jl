@@ -420,48 +420,42 @@ AllMarketShares(markets, params_indices[1], δ, charcs[1], market_shares)
     # TODO - indexing here will allocate, @view instead. 
     emp_shr = @view shares[1][:,3] 
     pred_shr = @view  market_shares[:,1]
-Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, δ, new_δ)
+max_diff, avg_diff, biggest_el = Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, δ, new_δ)
 
-# Probably this is diverging - noted in Nevo appendix.  In his implementation in meanval.m line 26/27
-"the order matters" - what does that mean?
-Am i doing it wrong b/c I am only doing one market?  
 
 another implementation: https://github.com/jeffgortmaker/pyblp/blob/b500d11efafc39d41a31730a354dd3bf9b32812f/pyblp/markets/market.py#L384
 
 another: MST / RCNL.f90 lines 4744 ff.
 
-Idea (?): start w/ better initial δ?  
+
+TODO - something is weird b/c these dot broadcasting versions do not seem to work but the loop does.  
+#new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
+#new_δ .= δ .+ (log.(empirical_shares) .- log.(predicted_shares))
+  
 
 """
-function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 300)
+function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
     ctr = 1 # keep a counter for debug 
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1)) # TODO - check that this will be right.  
     #δ = exp.(δ) # to use the more numerically stable iteration
-    outp = Array{Float64,1}()
-    mx_el = Array{Int64,1}()
     while (conv > ϵ) & (curr_its < max_it)
-        # now update the δ
-        println("⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆⋆")
-        println(" before share update ", extrema(predicted_shares))
-        println("current δ ", extrema(δ))
-        println("δ GT: ", sum(δ.>=new_δ), " δ LT: ", sum(δ.<new_δ))
-        ZeroOut(us)
-        PredShare(mkt, params, δ, products, predicted_shares, us)
-        println(" after share update ", extrema(predicted_shares))
-        println("diff: ", conv, " its: ", curr_its)
-        #new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
-        new_δ .= δ .+ (log.(empirical_shares) .- log.(predicted_shares))
-       # println("new δ after update: ", extrema(new_δ))
+        # debugging related... 
         conv = maximum(abs.(new_δ .- δ))  #norm(new_δ - δ, 2)
-        push!(outp, conv)
+        mean_conv = mean(abs.(new_δ .- δ))
+        # now update the δ
+        if curr_its%1000 == 0
+            println("iteration: ", curr_its, " conv: ", conv)
+        end 
+        ZeroOut(us)
+        PredShare(mkt, params, new_δ, products, predicted_shares, us)
+        for i = 1:length(new_δ)
+            δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
+            new_δ[i] = new_δ[i] + (log(empirical_shares[i]) - log(predicted_shares[i])) # update 
+        end 
         curr_its += 1
-        println(findmax(new_δ .- δ)[2])
-        push!(mx_el, findmax(new_δ .- δ)[2])
-        δ .= new_δ   # assign 
     end 
-    return outp, mx_el
 end 
 
 """
