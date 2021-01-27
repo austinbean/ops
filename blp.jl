@@ -233,8 +233,8 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 
-mean_u = zeros(948, 52);
-AllMarketShares(markets, params_indices[1], zeros(948), charcs, mean_u)
+mean_u = zeros(size(shares[1])[1], 52);
+AllMarketShares(markets, params_indices[1], zeros(948), charcs[1], mean_u)
 
 mean_u 
 
@@ -276,21 +276,21 @@ charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_hig
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
-mu = zeros(948);
-ind_u = zeros(948); 
-PredShare(cinc, params_indices[1], zeros(948), charcs, mu, ind_u)
+mu = zeros(size(shares[1])[1]);
+ind_u = zeros(size(shares[1])[1]); 
+PredShare(cinc, params_indices[1], zeros(948), charcs[1], mu, ind_u)
 sum(ind_u) # does sum to nearly one.  
 
 ## Test All markets ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
-muts = zeros(948, 52);
-ind_u = zeros(948); 
+muts = zeros(size(shares[1])[1], 52);
+ind_u = zeros(size(shares[1])[1]); 
 for i = 1:size(markets,3) 
     b = @view muts[:,i] # note this!
         # TODO - not that ind_u sums to 1, but b does not.  
-    PredShare(markets[:,:,i], params_indices[1], zeros(948), charcs, b, ind_u)
+    PredShare(markets[:,:,i], params_indices[1], zeros(size(shares[1])[1]), charcs[1], b, ind_u)
     println("pred share: ", sum(b))   
 end
 
@@ -335,30 +335,32 @@ TODO - can cut the allocation a little by removing tmp_sum and making it a float
 
 ## TEST ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars(:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
-utils = zeros(948);
-δ = zeros(948);
-Util(cinc[:,1], charcs, zeros(948), params_indices[1], utils );
+utils = zeros(size(shares[1])[1]);
+δ = zeros(size(shares[1])[1]);
+Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils );
 
 ## Test Across individuals. 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
-utils = zeros(948);
-δ = zeros(948);
+utils = zeros(size(shares[1])[1]);
+δ = zeros(size(shares[1])[1]);
 for i =1:size(cinc,2) 
     println("sum prior: ", sum(utils))
-    Util(cinc[:,i], charcs, δ, params_indices[1], utils)
+    Util(cinc[:,i], charcs[1], δ, params_indices[1], utils)
     println("sum after ", sum(utils))
-    println(" approx 1 ", isapprox(sum(utils),1; rtol= 0.1))
+    println(" approx 1 ", isapprox(sum(utils),1; rtol= 0.1)) # tolerance is pretty high, honestly.  Should be able to do better.
 end 
 
 ## Known answer test case ##
  
 Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
+
+# TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
 
 """
 function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
@@ -411,12 +413,14 @@ charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high
 params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
-market_shares = zeros(948, 52);
-δ = ;  #  initialize random
-new_δ = rand(948) # initialize zero - should be fine.    
-AllMarketShares(markets, params_indices[1], δ, charcs, market_shares)
-    # TODO - indexing here will allocate, @view instead.  
-Contraction(cinc, params_indices[1], charcs, shares[:,3], market_shares[:,1], δ, new_δ)
+market_shares = zeros(size(shares[1])[1], 52);
+δ = zeros(size(shares[1])[1]).+=(1/size(shares[1])[1]);  #  initialize equal shares
+new_δ = rand(size(shares[1])[1]) # initialize zero - should be fine?  Or maybe initialize 1/N    
+AllMarketShares(markets, params_indices[1], δ, charcs[1], market_shares)
+    # TODO - indexing here will allocate, @view instead. 
+    emp_shr = @view shares[1][:,3] 
+    pred_shr = @view  market_shares[:,1]
+Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, δ, new_δ)
 
 # Probably this is diverging - noted in Nevo appendix.  In his implementation in meanval.m line 26/27
 "the order matters" - what does that mean?
@@ -429,11 +433,11 @@ another: MST / RCNL.f90 lines 4744 ff.
 Idea (?): start w/ better initial δ?  
 
 """
-function Contraction(mkt::Array, params::Array, products::Array, empirical_shares::Array, predicted_shares::Array, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 300)
+function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 300)
     ctr = 1 # keep a counter for debug 
     conv = 1.0
     curr_its = 1
-    us = zeros(948)
+    us = zeros(size(products,1)) # TODO - check that this will be right.  
     #δ = exp.(δ) # to use the more numerically stable iteration
     outp = Array{Float64,1}()
     mx_el = Array{Int64,1}()
