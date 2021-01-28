@@ -342,6 +342,7 @@ utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
 Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils );
 
+
 ## Test Across individuals. 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
@@ -361,21 +362,28 @@ end
 Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
 # TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
-
+# TODO - made 40% faster, but can I do more?  
 """
 function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
+    pd = 0.0
+    for j = 1:size(demographics,1)
+        pd += params[j]*demographics[j]                # this term is constant across the products 
+    end 
     for i = 1:num_prods 
-        tmp_sum = 0.0                                  # reset the running utility for each person. 
+        tmp_sum = 0.0                                  # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
         tmp_sum += δ[i]                                # product-specific part 
         for j = 3:num_chars                            # TODO - this can be redone so that it doesn't require keeping track of this 3.
-            tmp_sum += products_char[i,j]*(params'*demographics) 
+            tmp_sum += products_char[i,j]*pd  
         end 
         utils[i] += tmp_sum 
     end   
-    mx_u = maximum(utils)                              # max for numerical stability
-    sm = (1/exp(mx_u))+sum(exp.(utils.-mx_u))          # denominator: 1+ sum (exp ( util - mx_u))
+    mx_u = maximum(utils)                              # max for numerical stability - faster than doing the comparison every step in the main loop         
+    sm = 1/exp(mx_u)                                   # denominator: 1/exp(mx_u) + sum (exp ( util - mx_u))
+    for i = 1:length(utils)
+        sm += exp(utils[i]-mx_u)
+    end 
     utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
     return nothing                                     # make sure this doesn't return, but operates on utils in place
 end 
