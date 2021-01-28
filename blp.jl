@@ -277,8 +277,13 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 mu = zeros(size(shares[1])[1]);
+δ = zeros(size(shares[1])[1]);
 ind_u = zeros(size(shares[1])[1]); 
-PredShare(cinc, params_indices[1], zeros(948), charcs[1], mu, ind_u)
+PredShare(cinc, params_indices[1], δ, charcs[1], mu, ind_u)
+
+@benchmark PredShare(cinc, params_indices[1], δ, charcs[1], mu, ind_u)
+
+
 sum(ind_u) # does sum to nearly one.  
 
 ## Test All markets ##
@@ -296,7 +301,7 @@ end
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 TODO - ind_utils can be pre-allocated at a higher level.  
-
+TIMING - takes basically exactly 10x as long (and allocates 10x) as Util when individuals == 10.
 """
 function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)
     characs, individuals = size(mkt)         # number of features, number of individuals.  
@@ -342,6 +347,7 @@ utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
 Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils );
 
+@benchmark Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils)
 
 ## Test Across individuals. 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
@@ -369,20 +375,20 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
     num_prods, num_chars = size(products_char)
     pd = 0.0
     for j = 1:size(demographics,1)
-        pd += params[j]*demographics[j]                # this term is constant across the products 
+        @inbounds pd += params[j]*demographics[j]                # this term is constant across the products 
     end 
+    utils .+= δ
     for i = 1:num_prods 
         tmp_sum = 0.0                                  # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
-        tmp_sum += δ[i]                                # product-specific part 
         for j = 3:num_chars                            # TODO - this can be redone so that it doesn't require keeping track of this 3.
-            tmp_sum += products_char[i,j]*pd  
+            @inbounds tmp_sum += products_char[i,j]*pd  
         end 
         utils[i] += tmp_sum 
     end   
     mx_u = maximum(utils)                              # max for numerical stability - faster than doing the comparison every step in the main loop         
     sm = 1/exp(mx_u)                                   # denominator: 1/exp(mx_u) + sum (exp ( util - mx_u))
     for i = 1:length(utils)
-        sm += exp(utils[i]-mx_u)
+        @inbounds sm += exp(utils[i]-mx_u)
     end 
     utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
     return nothing                                     # make sure this doesn't return, but operates on utils in place
