@@ -304,30 +304,29 @@ TODO - ind_utils can be pre-allocated at a higher level.
 TIMING - takes basically exactly 10x as long (and allocates 10x) as Util when individuals == 10.
 """
 function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)
-    characs, individuals = size(mkt)         # number of features, number of individuals.  
-    ZeroOut(market_shares)                   # be careful w/ this since it will zero out the **entire** market_shares Array.
+    characs, individuals = size(mkt)                # number of features, number of individuals.  
+    ZeroOut(market_shares)                          # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
-        v1 = @view mkt[:,i]
-        Util( v1, products, δ, params, ind_utils ) # computes utility for ALL products in market for one person
+        v1 = @view mkt[:,i]                         # selects demographics for one "person" w/out allocating
+        Util( v1, products, δ, params, ind_utils )  # computes utility for ALL products in market for one person
         market_shares .+= ind_utils          
     end
-    market_shares ./=individuals             # take mean over individuals in the market - divide by N_individuals. 
+    market_shares ./=individuals                    # take mean over individuals in the market - divide by N_individuals. 
     return nothing  
 end 
 
 
 
 """
-`Util(demographics::Array, products_char::Array, δ::Array, params::Array, utils::Array)`
+`Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)`
 Compute the utility over all products for a single simulated person in the market 
-- `demographics` is an array of demographics for an individual
+- `demographics` is a view of an array of demographics for an individual
 - `products_char` is an array of features 
 - `δ` is an array of the current mean utilities 
 - `params` is an array of the current set of parameters
 - `utils` is an array w/ dimension equal to that of the products in the market.
-- NB: operates in-place on the vector utils, which is reset to zero every time.  Cuts allocations
-
-Products, δ must be in the same order
+- NB: operates in-place on the vector utils, which is reset to zero every time.  Cuts allocations somewhat
+- NB: Products, δ must be in the same order
 
 
 This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_kd D_id ) / 1 + ∑ exp ( δ + ∑_k σ_k x^k_jt ν_i^k + π_k1 D_i1 + … + π_kd D_id )
@@ -335,8 +334,6 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 - x^k_jt are characteristics getting a random coefficient.  
 - σ_k a parameter multiplying a shock
 - D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
-
-TODO - can cut the allocation a little by removing tmp_sum and making it a float in the argument?  
 
 ## TEST ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
@@ -410,8 +407,16 @@ end
 
 
 """
-`Contraction()`
-
+`Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)`
+- mkt::Array - 
+- params::Array -  
+- products::Array - 
+- empirical_shares - 
+- predicted_shares - 
+- δ::Array - the product-specific terms 
+- new_δ::Array - container to hold the new δ's after the update
+- ϵ = 1e-6 - this will need to be set a lot lower eventually.  
+- max_it = 5_000_000 - stop if it doesn't finish by then.
 Computes the contraction within a single market.
 
 This should be:
@@ -430,50 +435,38 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 market_shares = zeros(size(shares[1])[1], 52);
-δ = zeros(size(shares[1])[1]).+=(1/size(shares[1])[1]);  #  initialize equal shares
-new_δ = rand(size(shares[1])[1]) # initialize zero - should be fine?  Or maybe initialize 1/N    
+delta = zeros(size(shares[1])[1]).+=(1/size(shares[1])[1]);  #  initialize equal shares
+new_delta = rand(size(shares[1])[1]) # initialize zero - should be fine?  Or maybe initialize 1/N    
 AllMarketShares(markets, params_indices[1], δ, charcs[1], market_shares)
     # TODO - indexing here will allocate, @view instead. 
     emp_shr = @view shares[1][:,3] 
     pred_shr = @view  market_shares[:,1]
-Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, δ, new_δ)
+Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, delta, new_delta)
 
 
-another implementation: https://github.com/jeffgortmaker/pyblp/blob/b500d11efafc39d41a31730a354dd3bf9b32812f/pyblp/markets/market.py#L384
+This allocates a lot and takes a while, b/c it is computing PredShares until convergence.  
+numerically stable version frequently gives NaN, probably due to small mkt shares?   
 
-another: MST / RCNL.f90 lines 4744 ff.
-
-
-TODO - something is weird b/c these dot broadcasting versions do not seem to work but the loop does.  
-#new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
-#new_δ .= δ .+ (log.(empirical_shares) .- log.(predicted_shares))
-  
-TODO - threading?  Surely in PredShare/Utils  
+Timing note: all overhead is due to Utils, via PredShares
 """
-function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
-    ctr = 1 # keep a counter for debug 
+function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1)) # TODO - check that this will be right.  
-    #δ = exp.(δ) # to use the more numerically stable iteration
     while (conv > ϵ) & (curr_its < max_it)
         # debugging related... 
-        conv = maximum(abs.(new_δ .- δ))  #norm(new_δ - δ, 2)
-        mean_conv = mean(abs.(new_δ .- δ))
-        # now update the δ
-        if curr_its%10000 == 0
+        conv = norm(new_δ.-δ, Inf) 
+        two_norm = norm(new_δ.-δ, 2)
+        if curr_its%1000 == 0
             println("iteration: ", curr_its, " conv: ", conv)
+            println("Inf: ", conv, " Two: ", two_norm)
         end 
-        ZeroOut(us)
         PredShare(mkt, params, new_δ, products, predicted_shares, us)
+        # now update the δ
         for i = 1:length(new_δ)
             δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
-            new_δ[i] = new_δ[i] + (log(empirical_shares[i]) - log(predicted_shares[i])) # update 
+            new_δ[i] = new_δ[i] + (log(empirical_shares[i]) - log(predicted_shares[i]))  
         end 
-# TEST 
-        # δ .= new_δ
-        # new_δ .= new_δ +. log.(empirical_shares) .- log(predicted_shares)
-
         curr_its += 1
     end 
 end 
@@ -482,9 +475,11 @@ end
 `FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)`
 A version of the Ryngaert/Varadhan/Nash (2012) faster BLP contraction.  
 See Section 2.3 for the equation.  
+
+TODO
 """
 function FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
-    ctr = 1 # keep a counter for debug 
+    ctr = 1 # keep a cunter for debug 
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1)) # TODO - check that this will be right.  
@@ -501,12 +496,23 @@ function FastContraction(mkt::Array, params::Array, products::Array, empirical_s
         PredShare(mkt, params, new_δ, products, predicted_shares, us)
         for i = 1:length(new_δ)
             δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
-         #   new_δ[i] = new_δ[i] + (log(empirical_shares[i]) - log(predicted_shares[i])) # update 
+         #   TODO - add fast version  
         end 
         curr_its += 1
     end 
 end 
 
+
+
+"""
+`FormError()`
+
+Take the product-specific fixed effects δ 
+"""
+function FormError(delta::Array, params::Array, products::Array )
+
+    return nothing 
+end 
 
 """
 `NormalizeVar(x)`
