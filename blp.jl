@@ -347,7 +347,7 @@ utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
 Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils );
 
-@benchmark Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils)
+@benchmark Util(cinc[:,1], charcs[1], δ, params_indices[1], utils)
 
 ## Test Across individuals. 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
@@ -364,21 +364,22 @@ for i =1:size(cinc,2)
 end 
 
 ## Known answer test case ##
- 
-Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], [0 0 0]).≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
+us = [0.0 0.0 0.0]
+Util([1; 0; 0], ['x' 'y' 1 1], [0 0 0], [1; 1; 1], us)
+us.≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
 # TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
-# TODO - made 40% faster, but can I do more?  
+# TODO - made 40% faster, but can I do more?   multithreading makes max_time worse, FYI.
 """
 function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
     pd = 0.0
     for j = 1:size(demographics,1)
-        @inbounds pd += params[j]*demographics[j]                # this term is constant across the products 
+        @inbounds pd += params[j]*demographics[j]      # this term is constant across the products 
     end 
     utils .+= δ
-    for i = 1:num_prods 
+    for i = 1:num_prods                                # NB: multithreading here makes max_time worse by 6x - 8x
         tmp_sum = 0.0                                  # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
         for j = 3:num_chars                            # TODO - this can be redone so that it doesn't require keeping track of this 3.
             @inbounds tmp_sum += products_char[i,j]*pd  
@@ -389,8 +390,9 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
     sm = 1/exp(mx_u)                                   # denominator: 1/exp(mx_u) + sum (exp ( util - mx_u))
     for i = 1:length(utils)
         @inbounds sm += exp(utils[i]-mx_u)
+        @inbounds utils[i] = exp(utils[i] - mx_u)
     end 
-    utils .= (exp.(utils.-mx_u))./sm                   # normalize by denominator 
+    utils ./=sm
     return nothing                                     # make sure this doesn't return, but operates on utils in place
 end 
 
@@ -434,7 +436,7 @@ AllMarketShares(markets, params_indices[1], δ, charcs[1], market_shares)
     # TODO - indexing here will allocate, @view instead. 
     emp_shr = @view shares[1][:,3] 
     pred_shr = @view  market_shares[:,1]
-max_diff, avg_diff, biggest_el = Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, δ, new_δ)
+Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, δ, new_δ)
 
 
 another implementation: https://github.com/jeffgortmaker/pyblp/blob/b500d11efafc39d41a31730a354dd3bf9b32812f/pyblp/markets/market.py#L384
@@ -446,7 +448,7 @@ TODO - something is weird b/c these dot broadcasting versions do not seem to wor
 #new_δ .= δ.*(empirical_shares./predicted_shares) # NB some δ's get really big.           
 #new_δ .= δ .+ (log.(empirical_shares) .- log.(predicted_shares))
   
-TODO - use the sped up version from Rynaert, Varadhan, etc.  
+TODO - threading?  Surely in PredShare/Utils  
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
     ctr = 1 # keep a counter for debug 
@@ -459,7 +461,7 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
         conv = maximum(abs.(new_δ .- δ))  #norm(new_δ - δ, 2)
         mean_conv = mean(abs.(new_δ .- δ))
         # now update the δ
-        if curr_its%1000 == 0
+        if curr_its%10000 == 0
             println("iteration: ", curr_its, " conv: ", conv)
         end 
         ZeroOut(us)
@@ -468,9 +470,43 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
             δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
             new_δ[i] = new_δ[i] + (log(empirical_shares[i]) - log(predicted_shares[i])) # update 
         end 
+# TEST 
+        # δ .= new_δ
+        # new_δ .= new_δ +. log.(empirical_shares) .- log(predicted_shares)
+
         curr_its += 1
     end 
 end 
+
+"""
+`FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)`
+A version of the Ryngaert/Varadhan/Nash (2012) faster BLP contraction.  
+See Section 2.3 for the equation.  
+"""
+function FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
+    ctr = 1 # keep a counter for debug 
+    conv = 1.0
+    curr_its = 1
+    us = zeros(size(products,1)) # TODO - check that this will be right.  
+    #δ = exp.(δ) # to use the more numerically stable iteration
+    while (conv > ϵ) & (curr_its < max_it)
+        # debugging related... 
+        conv = maximum(abs.(new_δ .- δ))  #norm(new_δ - δ, 2) # either L_2 or L_∞ are options
+        mean_conv = mean(abs.(new_δ .- δ))
+        # now update the δ
+        if curr_its%10000 == 0
+            println("iteration: ", curr_its, " conv: ", conv)
+        end 
+        ZeroOut(us)
+        PredShare(mkt, params, new_δ, products, predicted_shares, us)
+        for i = 1:length(new_δ)
+            δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
+         #   new_δ[i] = new_δ[i] + (log(empirical_shares[i]) - log(predicted_shares[i])) # update 
+        end 
+        curr_its += 1
+    end 
+end 
+
 
 """
 `NormalizeVar(x)`
