@@ -479,7 +479,6 @@ See Section 2.3 for the equation.
 TODO
 """
 function FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
-    ctr = 1 # keep a cunter for debug 
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1)) # TODO - check that this will be right.  
@@ -505,13 +504,27 @@ end
 
 
 """
-`FormError()`
-
+`FormError(mkt, params::Array, products::Array, empirical_shares, predicted_shares)`
+- mkt - this should be a view of a market 
+- params::Array - shared ?
+- products::Array - receive from a higher level 
+- empirical_shares - receive from a higher level
+- predicted_shares - 
 Take the product-specific fixed effects δ 
+This should call relatively high level stuff like characteristics and markets.
+Ideally I would do this within a market so that the error can be computed across processes.
 """
-function FormError(delta::Array, params::Array, products::Array )
+function FormError(mkt, params::Array, products::Array, empirical_shares, predicted_shares )
 
-    return nothing 
+    init_delt = zeros(size(empirical_shares[1])[1]).+=(1/size(empirical_shares[1])[1]);
+    new_delt = rand(size(empirical_shares[1])[1])
+
+
+    Contraction(mkt, params, products, empirical_share, predicted_share, init_delta, new_delta)
+    
+    error = 
+    
+    return  # this must be sent back to the main process  
 end 
 
 """
