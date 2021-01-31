@@ -22,6 +22,8 @@ using StaticArrays
 using LinearAlgebra 
 using Statistics
 using Random 
+using Distributed
+using SharedArrays
 
 """
 `FW(x)`
@@ -475,7 +477,7 @@ end
 `FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)`
 A version of the Ryngaert/Varadhan/Nash (2012) faster BLP contraction.  
 See Section 2.3 for the equation.  
-
+See also MST RCNL.f90 lines 4737 - 4775 for an implementation  
 TODO
 """
 function FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
@@ -510,22 +512,70 @@ end
 - products::Array - receive from a higher level 
 - empirical_shares - receive from a higher level
 - predicted_shares - 
+- ; random_coeffs = 3: number of characteristics w/ a random coefficient.  These are LAST on the parameters vector.
 Take the product-specific fixed effects δ 
 This should call relatively high level stuff like characteristics and markets.
 Ideally I would do this within a market so that the error can be computed across processes.
+
+Computes ω = δ - X_1 Θ_1, where X_1 is J × T, where J is the number of products and T is the number of markets.  
+This can be done separately across markets and returned one market at a time in parallel.  
+
+# Test 
+
+shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+params_indices, markets = MKT(10,3);
+    # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
+cinc = markets[:,:,10];
+
+FormError(cinc, params_indices[1], charcs[1], shares[1])
+
+
+
 """
-function FormError(mkt, params::Array, products::Array, empirical_shares, predicted_shares )
-
-    init_delt = zeros(size(empirical_shares[1])[1]).+=(1/size(empirical_shares[1])[1]);
-    new_delt = rand(size(empirical_shares[1])[1])
-
-
-    Contraction(mkt, params, products, empirical_share, predicted_share, init_delta, new_delta)
+function FormError(mkt, params::Array, products::Array, empirical_shares; random_coeffs = 3)
+    # initiate a few vectors for the contraction - δ's and the market shares implied 
+    init_delta = zeros(size(empirical_shares, 1)).+=(1/size(empirical_shares, 1));
+    new_delta = rand(size(empirical_shares,1));
+    market_shares = zeros(size(empirical_shares,1));  
+# TODO - fix tolerance when debugging is done!
+    Contraction(mkt, params, products, empirical_shares, market_shares, init_delta, new_delta; ϵ = 1e-3)
+    println("finished contracting")
+# TODO - get the parameter order correct - params has higher dim.  
+    error = new_delta - products[3,:]*params # TODO - not all of params.  
     
-    error = 
-    
-    return  # this must be sent back to the main process  
+    return error  # this must be sent back to the main process  
 end 
+
+
+"""
+GMM()
+
+Parallelizes the computation across processes
+
+maybe I want to take the shares, return a delta, put the delta in an array?  whether shared or not...
+
+"""
+function GMM()
+    # this kind of does what I want, but does this have to be a shared array?  No.
+    s1 = SharedArrays.SharedArray{Float64}((10,10))
+    pmap( x->x.+=myid(), eachrow(s1))
+    
+    s2 = zeros(10,10)
+    pmap( x->x.+=myid(), eachrow(s2))
+
+    # this should take a form *something like*
+#    pmap( x->FormError(x[1], x[2], ...), zip(... stuff ...))
+
+    return nothing 
+end 
+
+
+
+
+
+
+
 
 """
 `NormalizeVar(x)`
@@ -761,7 +811,7 @@ function ProductChars(mkt_vars::Array, Characteristics...)
     #wanted_characteristics = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL ] ]
     wanted_characteristics = market_shares[!, [Characteristics...] ]
         # normalize cts vars.
-    b1 = @view wanted_characteristics[:, 3]
+    b1 = @view wanted_characteristics[:, 3] # TODO is this a little dumb b/c I could just define NormalizeVar in place?
     wanted_characteristics[:,3] .= NormalizeVar(b1)
     outp = Array{Array{Real,2},1}()
     for el in mkts
