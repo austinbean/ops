@@ -23,6 +23,7 @@ using LinearAlgebra
 using Statistics
 using Random 
 using Distributed
+using DistributedArrays
 using SharedArrays
 
 """
@@ -553,19 +554,31 @@ GMM()
 
 Parallelizes the computation across processes
 
-maybe I want to take the shares, return a delta, put the delta in an array?  whether shared or not...
+maybe I want to take the shares, return a delta, put the error in an array?  whether shared or not...
 
+
+pmap is a little more subtle than it first seems.  
+
+a reference: https://www.csd.uwo.ca/~mmorenom/cs2101a_moreno/Parallel_computing_with_Julia.pdf
 """
 function GMM()
     # this kind of does what I want, but does this have to be a shared array?  No.
     s1 = SharedArrays.SharedArray{Float64}((10,10))
-    pmap( x->x.+=myid(), eachrow(s1))
-    
-    s2 = zeros(10,10)
-    pmap( x->x.+=myid(), eachrow(s2))
+    function make_s2()
+        s2 = SharedArrays.SharedArray{Float64}((10,10))
+        for el in 1:length(s2) 
+            s2[el] += 1
+        end
+        return s2 
+    end
+    s2 = make_s2()
+    pmap( x->x.+=myid(), zip(eachrow(s1), eachrow(s2)))
+  
+    s2 = make_s2()
+    pmap( x->x.+=myid(), zip(eachrow(s2), eachrow(s2)))
 
     # this should take a form *something like*
-#    pmap( x->FormError(x[1], x[2], ...), zip(... stuff ...))
+#    pmap( x->x[1].+=FormError(x[2], x[3], x[4]), zip(eachrow(results), mkt, params, products, eachrow(shares) ))
 
     return nothing 
 end 
