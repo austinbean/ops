@@ -13,6 +13,7 @@
     They are all assumed independent, apparently, b/c anything else is too demanding.  
     =#
 
+
 using CSV
 using GLM 
 using DataFrames
@@ -428,7 +429,6 @@ This should be:
 - δ^t is previous iteration of values 
 - log S_{.t} is log market shares from data 
 - log (s_{.t} (...) ) are log computed market shares. 
-- Uses a more numerically stable iteration computed using exp.(δ^t)
 
 ## Test ## 
 
@@ -555,6 +555,9 @@ GMM()
 Parallelizes the computation across processes
 
 maybe I want to take the shares, return a delta, put the error in an array?  whether shared or not...
+I think I want to:
+- load the empirical shares as a shared array
+- save the δ terms as a shared array 
 
 
 pmap is a little more subtle than it first seems.  
@@ -562,17 +565,20 @@ pmap is a little more subtle than it first seems.
 a reference: https://www.csd.uwo.ca/~mmorenom/cs2101a_moreno/Parallel_computing_with_Julia.pdf
 """
 function GMM()
-    # this kind of does what I want, but does this have to be a shared array?  No.
-    s1 = SharedArrays.SharedArray{Float64}((10,10))
 
-    pmap( x->x.+=myid(), eachrow(s1)) # zip is proving to be hard to use.
-  
-    s2 = make_s2()
-    pmap( x->x.+=myid(), zip(eachrow(s2), eachrow(s2)))
+    shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
+    s1 = SharedArray{Float64}(size(shares[1]))
+    for row in 1:size(shares[1],1)
+        for col in 1:size(shares[1],2)
+            s1[row,col] += shares[1][row,col]
+        end
+    end 
 
-    # this should take a form *something like*
-#    pmap( x->x[1].+=FormError(x[2], x[3], x[4]), zip(eachrow(results), mkt, params, products, eachrow(shares) ))
+    charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+    params_indices, markets = MKT(10,3);
 
+
+        println(s1)
     # alternative idea 
 
     @sync begin 
@@ -580,12 +586,6 @@ function GMM()
             @async remotecall_fetch(FormError, mkt, params, products, empirical_shares)
         end 
     end 
-
-
-
-
-
-
     return nothing 
 end 
 
@@ -838,7 +838,6 @@ function ProductChars(mkt_vars::Array, Characteristics...)
     end
     return outp 
 end 
-
 
 
 #=
