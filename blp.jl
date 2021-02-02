@@ -564,21 +564,27 @@ a reference: https://www.csd.uwo.ca/~mmorenom/cs2101a_moreno/Parallel_computing_
 function GMM()
     # this kind of does what I want, but does this have to be a shared array?  No.
     s1 = SharedArrays.SharedArray{Float64}((10,10))
-    function make_s2()
-        s2 = SharedArrays.SharedArray{Float64}((10,10))
-        for el in 1:length(s2) 
-            s2[el] += 1
-        end
-        return s2 
-    end
-    s2 = make_s2()
-    pmap( x->x.+=myid(), zip(eachrow(s1), eachrow(s2)))
+
+    pmap( x->x.+=myid(), eachrow(s1)) # zip is proving to be hard to use.
   
     s2 = make_s2()
     pmap( x->x.+=myid(), zip(eachrow(s2), eachrow(s2)))
 
     # this should take a form *something like*
 #    pmap( x->x[1].+=FormError(x[2], x[3], x[4]), zip(eachrow(results), mkt, params, products, eachrow(shares) ))
+
+    # alternative idea 
+
+    @sync begin 
+        for p in workers()
+            @async remotecall_fetch(FormError, mkt, params, products, empirical_shares)
+        end 
+    end 
+
+
+
+
+
 
     return nothing 
 end 
