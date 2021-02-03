@@ -451,6 +451,7 @@ This allocates a lot and takes a while, b/c it is computing PredShares until con
 numerically stable version frequently gives NaN, probably due to small mkt shares?   
 
 Timing note: all overhead is due to Utils, via PredShares
+TODO - could define δ, new_δ in here.  And predicted shares too.  These would be sized according to empirical shares.
 """
 function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
     conv = 1.0
