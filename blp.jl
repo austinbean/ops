@@ -412,12 +412,12 @@ end
 
 """
 `Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)`
-- mkt::Array - 
-- params::Array -  
-- products::Array - 
-- empirical_shares - 
-- predicted_shares - 
-- δ::Array - the product-specific terms 
+- mkt::Array - a set of demographics for simulated individuals.
+- params::Array -  the current set of parameters (e.g., β, σ)
+- products::Array - a set of product features, needed to compute predicted shares 
+- empirical_shares - these are shares from the data.
+- predicted_shares - market shares are predicted given the δ's available at the current iteration
+- δ::Array - the product-specific terms used in computing utility. 
 - new_δ::Array - container to hold the new δ's after the update
 - ϵ = 1e-6 - this will need to be set a lot lower eventually.  
 - max_it = 5_000_000 - stop if it doesn't finish by then.
@@ -438,13 +438,11 @@ params_indices, markets = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 market_shares = zeros(size(shares[1])[1], 52);
-delta = zeros(size(shares[1])[1]).+=(1/size(shares[1])[1]);  #  initialize equal shares
-new_delta = rand(size(shares[1])[1]) # initialize zero - should be fine?  Or maybe initialize 1/N    
-AllMarketShares(markets, params_indices[1], δ, charcs[1], market_shares)
+AllMarketShares(markets, params_indices[1], delta, charcs[1], market_shares)
     # TODO - indexing here will allocate, @view instead. 
     emp_shr = @view shares[1][:,3] 
     pred_shr = @view  market_shares[:,1]
-Contraction(cinc, params_indices[1], charcs[1], emp_shr, pred_shr, delta, new_delta)
+Contraction(cinc, params_indices[1], charcs[1], emp_shr)
 
 
 This allocates a lot and takes a while, b/c it is computing PredShares until convergence.  
@@ -452,11 +450,15 @@ numerically stable version frequently gives NaN, probably due to small mkt share
 
 Timing note: all overhead is due to Utils, via PredShares
 TODO - could define δ, new_δ in here.  And predicted shares too.  These would be sized according to empirical shares.
+
 """
-function Contraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 100)
+function Contraction(mkt::Array, params::Array, products::Array, empirical_shares; ϵ = 1e-6, max_it = 100)
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1)) # TODO - check that this will be right.  
+    δ = zeros(size(empirical_shares)).+=(1/size(empirical_shares,1))
+    new_δ = zeros(size(empirical_shares))    # TODO - these can be started at a better value, like log(s) - log(s_0)
+    predicted_shares = zeros(size(empirical_shares))
     while (conv > ϵ) & (curr_its < max_it)
         # debugging related... 
         conv = norm(new_δ.-δ, Inf) 
@@ -473,6 +475,7 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
         end 
         curr_its += 1
     end 
+    return new_δ
 end 
 
 """
@@ -485,42 +488,32 @@ TODO
 function FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
     conv = 1.0
     curr_its = 1
+    us = zeros(size(products,1)) # TODO - check that this will be right. 
     us = zeros(size(products,1)) # TODO - check that this will be right.  
+    δ = zeros(size(empirical_shares)).+=(1/size(empirical_shares,1))
+    new_δ = zeros(size(empirical_shares))    # TODO - these can be started at a better value, like log(s) - log(s_0)
+    predicted_shares = zeros(size(empirical_shares)) 
     #δ = exp.(δ) # to use the more numerically stable iteration
-    while (conv > ϵ) & (curr_its < max_it)
-        # debugging related... 
-        conv = maximum(abs.(new_δ .- δ))  #norm(new_δ - δ, 2) # either L_2 or L_∞ are options
-        mean_conv = mean(abs.(new_δ .- δ))
-        # now update the δ
-        if curr_its%10000 == 0
-            println("iteration: ", curr_its, " conv: ", conv)
-        end 
-        ZeroOut(us)
-        PredShare(mkt, params, new_δ, products, predicted_shares, us)
-        for i = 1:length(new_δ)
-            δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
-         #   TODO - add fast version  
-        end 
-        curr_its += 1
-    end 
+    # TODO - copy latest changed version.  
+    return new_δ
 end 
 
 
 
 """
-`FormError(mkt, params::Array, products::Array, empirical_shares, predicted_shares)`
-- mkt - this should be a view of a market 
+`FormError(mkts, params::Array, products::Array, empirical_shares, predicted_shares)`
+- mkts -  ALL of the markets 
 - params::Array - shared ?
 - products::Array - receive from a higher level 
 - empirical_shares - receive from a higher level
 - predicted_shares - 
 - ; random_coeffs = 3: number of characteristics w/ a random coefficient.  These are LAST on the parameters vector.
-Take the product-specific fixed effects δ 
-This should call relatively high level stuff like characteristics and markets.
-Ideally I would do this within a market so that the error can be computed across processes.
-
+This will pmap the Contraction function across the markets to recover the error ω.
 Computes ω = δ - X_1 Θ_1, where X_1 is J × T, where J is the number of products and T is the number of markets.  
-This can be done separately across markets and returned one market at a time in parallel.  
+This can be done separately across markets and returned one market at a time in parallel via pmap.
+Pmap will automatically return a vector of whatever Contraction returns.
+NB: some care should be taken to make sure these can be re-identified.
+EG have Contraction return δ and a MKT identifier tuple.  Easy fix.  
 
 # Test 
 
@@ -535,16 +528,23 @@ FormError(cinc, params_indices[1], charcs[1], shares[1])
 
 
 """
-function FormError(mkt, params::Array, products::Array, empirical_shares; random_coeffs = 3)
-    # initiate a few vectors for the contraction - δ's and the market shares implied 
-    init_delta = zeros(size(empirical_shares, 1)).+=(1/size(empirical_shares, 1));
-    new_delta = rand(size(empirical_shares,1));
-    market_shares = zeros(size(empirical_shares,1));  
+function FormError(mkts, params::Array, products::Array, empirical_shares; random_coeffs = 3)
+    demos, individuals, num_mkts = size(mkts)
+    # collect all the markets in a vector of Array{Float,2}
+    m = Array{Array{Real,2},1}()
+    for i = 1:num_mkts 
+        push!(m, mkts[:,:,i])
+    end 
+    p = repeat(params, num_mkts)
 # TODO - fix tolerance when debugging is done!
-    Contraction(mkt, params, products, empirical_shares, market_shares, init_delta, new_delta; ϵ = 1e-3)
+    # x[1] - markets
+    # x[2] - parameters 
+    # x[3] - products
+    # x[4] - empirical shares
+    new_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4]), zip(m, p, pr, sh))
     println("finished contracting")
 # TODO - get the parameter order correct - params has higher dim.  
-    error = new_delta - products[3,:]*params # TODO - not all of params.  
+    error = new_δ - products[3,:]*params # TODO - not all of params.  
     
     return error  # this must be sent back to the main process  
 end 
@@ -567,26 +567,7 @@ a reference: https://www.csd.uwo.ca/~mmorenom/cs2101a_moreno/Parallel_computing_
 """
 function GMM()
 
-    shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-    s1 = SharedArray{Float64}(size(shares[1]))
-    for row in 1:size(shares[1],1)
-        for col in 1:size(shares[1],2)
-            s1[row,col] += shares[1][row,col]
-        end
-    end 
 
-    charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-    params_indices, markets = MKT(10,3);
-
-
-        println(s1)
-    # alternative idea 
-
-    @sync begin 
-        for p in workers()
-            @async remotecall_fetch(FormError, mkt, params, products, empirical_shares)
-        end 
-    end 
     return nothing 
 end 
 
