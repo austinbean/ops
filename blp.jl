@@ -116,7 +116,7 @@ characteristics.   Index n is for the market.
 
 ## TEST: ##
 
-mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+mkt_chars = CSV.read("./state_demographics.csv", DataFrame) 
 
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
 
@@ -152,7 +152,7 @@ Returns a set of S individuals w/ random characteristics from the collection x..
 
 ## TEST: ##
 
-mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+mkt_chars = CSV.read("./state_demographics.csv", DataFrame) 
 
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
 
@@ -191,7 +191,7 @@ Returns a collection of simulated individuals numbering S across the markets M, 
 
 ## TEST: ## 
 
-mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+mkt_chars = CSV.read("./state_demographics.csv", DataFrame) 
 
 states = convert(Array{String,1}, mkt_chars[!,:name])
 
@@ -612,7 +612,7 @@ TODO - does not currently include β (no i) product characteristics?
 
 ## Test ## 
 - broken ATM since another argument was added.  
-mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) ;
+mkt_chars = CSV.read("./state_demographics.csv", DataFrame) ;
 
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop]);
 
@@ -663,7 +663,7 @@ function MKT(N, C)
     N_individuals = N      # number of individuals to simulate per market.  
     N_characteristics = C  # number of characteristics getting a random coeff 
 
-    mkt_chars = CSV.read("/Users/austinbean/Desktop/programs/opioids/state_demographics.csv", DataFrame) 
+    mkt_chars = CSV.read("./state_demographics.csv", DataFrame) 
     mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
     # at least import the state-level data...
         # TODO - there are too many features here relative to other applications.  
@@ -785,7 +785,7 @@ shares = MarketShares([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :market_sh
 function MarketShares(mkt_vars::Array, MKT...) # take a variable identifying the market here
     mkts = unique(mkt_vars)
     out1 = Array{Array{Real,2}, 1}()
-    market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
+    market_shares = CSV.read("./national_shares.csv")
     wanted_shares = market_shares[!, [MKT...]]
     # this assumes the market var is in the first column
     for el in mkts 
@@ -807,7 +807,7 @@ charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_hig
 function ProductChars(mkt_vars::Array, Characteristics...)
     mkts = unique(mkt_vars)
     # TODO - need to split into markets in the same way as MarketShares() does it.
-    market_shares = CSV.read("/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/national_shares.csv")
+    market_shares = CSV.read("./national_shares.csv")
     #wanted_characteristics = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL ] ]
     wanted_characteristics = market_shares[!, [Characteristics...] ]
         # normalize cts vars.
