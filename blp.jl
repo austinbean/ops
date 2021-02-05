@@ -562,7 +562,6 @@ I think I want to:
 
 pmap is a little more subtle than it first seems.  
 
-a reference: https://www.csd.uwo.ca/~mmorenom/cs2101a_moreno/Parallel_computing_with_Julia.pdf
 """
 function GMM()
 
@@ -609,6 +608,7 @@ Can set rand_init = false to start from a particular spot.
 - `rand_init` = true; set to false to start from some particular set of parameters
 
 TODO - this does not include the variance of the random shock on the characteristic  
+TODO - does not currently include β (no i) product characteristics?
 
 ## Test ## 
 - broken ATM since another argument was added.  
