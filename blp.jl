@@ -526,15 +526,14 @@ cinc = markets[:,:,10];
 FormError(cinc, params_indices[1], charcs[1], shares[1])
 
 
+TODO - since I don't know what will finish when Contraction should return a market-level identifier.
+TODO - need to fix the products × params issue.  
 
 """
 function FormError(mkts, params::Array, products::Array, empirical_shares; random_coeffs = 3)
     demos, individuals, num_mkts = size(mkts)
     # collect all the markets in a vector of Array{Float,2}
-    m = Array{Array{Real,2},1}()
-    for i = 1:num_mkts 
-        push!(m, mkts[:,:,i])
-    end 
+    m = [ mkts[:,:,k] for k = 1:size(mkts,3)]  # faster than a loop   
     p = repeat(params, num_mkts)
 # TODO - fix tolerance when debugging is done!
     # x[1] - markets
