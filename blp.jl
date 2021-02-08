@@ -609,6 +609,8 @@ Can set rand_init = false to start from a particular spot.
 
 TODO - this does not include the variance of the random shock on the characteristic  
 TODO - does not currently include β (no i) product characteristics?
+TODO - coding is wrong.  Needs to be length(x) - 1 
+TODO - need to track the reference category.  
 
 ## Test ## 
 - broken ATM since another argument was added.  
@@ -634,17 +636,24 @@ function InitialParams(Characteristics, x...; rand_init = true )
     Random.seed!(323)
     ds = Array{Tuple{Int64,Int64},1}()
     curr = 1
+    len = 0
     for (i, el) in enumerate(x)
         push!(ds, (curr,curr+length(el[1])-1))
         curr = curr +length(el[1]) 
+        len += length(el[1])-1
     end   
     if rand_init 
-        arr = randn(curr-1)  # generate random parameters
+        arr = randn(len)  # generate random parameters
     else 
-        arr = zeros(Float64, curr-1)
+        arr = zeros(Float64, len)
     end 
-    push!(ds, (curr,curr+Characteristics-1))
-    return vcat(arr, abs.(rand(Float64, Characteristics))), ds 
+    # NOTE - this feature is not being used but it will mess up if Characteristics = 0 
+    if Characteristics > 0 
+        push!(ds, (curr,curr+Characteristics-1))
+    else 
+        # do nothing 
+    end 
+    return vcat(arr, abs.(rand(Float64, Characteristics))), ds, len 
 end 
 
 """
