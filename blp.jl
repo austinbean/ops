@@ -603,8 +603,10 @@ and will return an initial vector, which can either be random or from a particul
 Will also return a collection of indexes corresponding to the dimension of the x... vectors 
 Can set rand_init = false to start from a particular spot.
 
-- `Characteristics` - how many characteristics will get random coefficients?  these have variances
+- `Characteristics` - how many characteristics will get random coefficients?  these have variances > 0
+- `Characteristics` - must also have means.
 - `x...` collection of demographic features stored as tuples of OH-vectors and FrequencyWeights
+- The `x...` features are leave-one-out dummy coded.  Each gets a parameter.
 - `rand_init` = true; set to false to start from some particular set of parameters
 
 TODO - this does not include the variance of the random shock on the characteristic  
@@ -645,13 +647,12 @@ function InitialParams(Characteristics, x...; rand_init = true )
     else 
         arr = zeros(Float64, len)
     end 
-    # NOTE - this feature is not being used but it will mess up if Characteristics = 0 
     if Characteristics > 0 
         push!(ds, (curr,curr+Characteristics-1))
-    else 
-        # do nothing 
-    end 
-    return vcat(arr, abs.(rand(Float64, Characteristics))), ds  # can return len if need params less random coeffs.  
+        curr = curr +max(Characteristics,1)
+        push!(ds, (curr,curr+Characteristics-1))
+    end  # NB:If characteristics == 0, vcat below has the correct dimension.  
+    return vcat(arr, rand(Float64, Characteristics), abs.(rand(Float64, Characteristics))), ds  # can return len if need params less random coeffs.  
 end 
 
 """
