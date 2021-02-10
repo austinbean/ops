@@ -376,6 +376,8 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
     pd = 0.0
+    # TODO - this needs to be rewritten to get this multiplication correct. 
+        # FIXME - this cannot be correct.  Check equation (A-1) again.  
     for j = 1:size(demographics,1)
         @inbounds pd += params[j]*demographics[j]      # this term is constant across the products 
     end 
@@ -606,11 +608,12 @@ Can set rand_init = false to start from a particular spot.
 - `Characteristics` - how many characteristics will get random coefficients?  these have variances > 0
 - `Characteristics` - must also have means.
 - `x...` collection of demographic features stored as tuples of OH-vectors and FrequencyWeights
-- The `x...` features are leave-one-out dummy coded.  Each gets a parameter.
+- The `x...` features are "dummy trap coded".  Fix first value here to zero.
 - `rand_init` = true; set to false to start from some particular set of parameters
-
-TODO - this does not include the variance of the random shock on the characteristic  
-TODO - does not currently include β (no i) product characteristics?
+- The returned items are a vector w/ the parameter values 
+- A vector of tuples recording where each demographic item stops and finishes
+- Followed by the locations of the means of the random coefficients.
+- Followed by the locations of the variances of the random coefficients.  
 
 ## Test ## 
 - broken ATM since another argument was added.  
@@ -637,22 +640,28 @@ function InitialParams(Characteristics, x...; rand_init = true )
     ds = Array{Tuple{Int64,Int64},1}()
     curr = 1
     len = 0
+    first_ix = zeros(Int64, length(x)) # this will be length(x) long 
+        # creates tuples corresponding to parameters, records how many parameters there are.
     for (i, el) in enumerate(x)
-        push!(ds, (curr,curr+length(el[1])-2))
-        curr = curr +length(el[1])-1 
-        len += length(el[1])-1
+        push!(ds, (curr,curr+length(el[1])-1))
+        first_ix[i] = curr
+        curr = curr +length(el[1])
+        len += length(el[1])
     end   
     if rand_init 
         arr = randn(len)  # generate random parameters
     else 
         arr = zeros(Float64, len)
     end 
+    for j ∈ first_ix 
+        arr[j] = 0.0   # reset these back to zero to make multiplication easier.  
+    end 
     if Characteristics > 0 
         push!(ds, (curr,curr+Characteristics-1))
         curr = curr +max(Characteristics,1)
         push!(ds, (curr,curr+Characteristics-1))
     end  # NB:If characteristics == 0, vcat below has the correct dimension.  
-    return vcat(arr, rand(Float64, Characteristics), abs.(rand(Float64, Characteristics))), ds  # can return len if need params less random coeffs.  
+    return vcat(arr, rand(Float64, Characteristics), abs.(rand(Float64, Characteristics))), ds, first_ix  # can return len if need params less random coeffs.  
 end 
 
 """
