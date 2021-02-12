@@ -377,7 +377,9 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
     num_prods, num_chars = size(products_char)
     pd = 0.0
     # TODO - this needs to be rewritten to get this multiplication correct. 
-        # FIXME - this cannot be correct.  Check equation (A-1) again.  
+    # this is wrong b/c the parameters are the wrong dimension, actually.
+    # the matrix Π should have a different set of params for each item getting a random coefficient.
+    # this is a big change...
     for j = 1:size(demographics,1)
         @inbounds pd += params[j]*demographics[j]      # this term is constant across the products 
     end 
