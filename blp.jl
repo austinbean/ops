@@ -636,6 +636,9 @@ a1, b1 = InitialParams(3, race, disability)
 - not right ATM since another argument added 
 b1 == [(1,6), (7,8)]
 sum(a1 .≈ [  1.065729740994666, -0.829056350999318,  0.8962148070867403,  1.0436992067470956,  0.07009106904271295, -0.5353616478134361, -0.44631360818507515, 0.11163462482008807]) == 8
+
+TODO: this should generate the Σ, Π which are needed.  Right now it's generating one row of that, effectively.  
+There is an issue w/ Characteristics == 0
 """
 function InitialParams(Characteristics, x...; rand_init = true )
     Random.seed!(323)
@@ -651,19 +654,27 @@ function InitialParams(Characteristics, x...; rand_init = true )
         len += length(el[1])
     end   
     if rand_init 
-        arr = randn(len)  # generate random parameters
+        arr = randn(len, max(Characteristics,1))  # generate random parameters
     else 
-        arr = zeros(Float64, len)
+        arr = zeros(Float64, len, max(Characteristics,1))
     end 
     for j ∈ first_ix 
-        arr[j] = 0.0   # reset these back to zero to make multiplication easier.  
+        arr[j,:] .= 0.0   # reset these back to zero to make multiplication easier.  
     end 
     if Characteristics > 0 
         push!(ds, (curr,curr+Characteristics-1))
         curr = curr +max(Characteristics,1)
         push!(ds, (curr,curr+Characteristics-1))
     end  # NB:If characteristics == 0, vcat below has the correct dimension.  
-    return vcat(arr, rand(Float64, Characteristics), abs.(rand(Float64, Characteristics))), ds, first_ix  # can return len if need params less random coeffs.  
+    vcv =  rand(Float64, Characteristics, Characteristics)
+    for i = 1:Characteristics 
+        vcv[i,i] = abs(vcv[i,i])
+    end
+    if Characteristics > 0  
+        return vcat(arr, rand(Float64,1,Characteristics), vcv ), ds, first_ix  # can return len if need params less random coeffs.  
+    else
+        return arr, ds, first_ix # special case when there are no random characteristics - not that relevant.  
+    end 
 end 
 
 """
