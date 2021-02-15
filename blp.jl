@@ -346,7 +346,8 @@ params_indices, markets = MKT(10,3);
 cinc = markets[:,:,10];
 utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
-Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils );
+pd = zeros(Float64,3)
+Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils, pd );
 
 @benchmark Util(cinc[:,1], charcs[1], δ, params_indices[1], utils)
 
@@ -372,22 +373,20 @@ us.≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 # TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
 # TODO - made 40% faster, but can I do more?   multithreading makes max_time worse, FYI.
 """
-function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array)
+function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array, pd::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
-    pd = 0.0
-    # TODO - this needs to be rewritten to get this multiplication correct. 
-    # this is wrong b/c the parameters are the wrong dimension, actually.
-    # the matrix Π should have a different set of params for each item getting a random coefficient.
-    # this is a big change...
-    for j = 1:size(demographics,1)
-        @inbounds pd += params[j]*demographics[j]      # this term is constant across the products 
+    ZeroOut(pd)
+    for j = 1:size(pd,1)   # == size(params,2) 
+        for i = 1:size(demographics,1) # FIXME - demographics column has different dimensions from params.  
+            @inbounds pd[j] += params[i,j]*demographics[i]      # this term is constant across the products
+        end 
     end 
     utils .+= δ
     for i = 1:num_prods                                # NB: multithreading here makes max_time worse by 6x - 8x
         tmp_sum = 0.0                                  # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
         for j = 3:num_chars                            # TODO - this can be redone so that it doesn't require keeping track of this 3.
-            @inbounds tmp_sum += products_char[i,j]*pd  
+            @inbounds tmp_sum += products_char[i,j]*pd[j]  
         end 
         utils[i] += tmp_sum 
     end   
