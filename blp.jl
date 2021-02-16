@@ -211,9 +211,11 @@ function PopMarkets(M, S, Ch, x...)
     # get the simulated for S individuals demographics over all of the markets M w/ Ch characteristics and x... demographics.  
     length = size( Sampler(1, x...) , 1)
     mkts = size(M,1)
+    # TODO - output to be "ch" longer, for a mean for each param 
     outp = zeros(Float64, length+Ch, S, mkts)
     for i = 1:mkts 
         outp[1:length,:,i] += Population(S, i, x...) #
+        # TODO - add "ch" 1's here, prior to this.  
         outp[(length+1):end,:,i] += randn(Ch, S)     # shocks, but think carefully about this.  These go on product features.  
     end 
     return outp 
@@ -347,7 +349,8 @@ cinc = markets[:,:,10];
 utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
 pd = zeros(Float64,3)
-Util(cinc[:,1], charcs[1], zeros(size(shares[1])[1]), params_indices[1], utils, pd );
+shr = zeros(size(shares[1])[1])
+Util(cinc[:,1], charcs[1], shr, params_indices[1], utils, pd );
 
 @benchmark Util(cinc[:,1], charcs[1], δ, params_indices[1], utils)
 
@@ -637,7 +640,9 @@ b1 == [(1,6), (7,8)]
 sum(a1 .≈ [  1.065729740994666, -0.829056350999318,  0.8962148070867403,  1.0436992067470956,  0.07009106904271295, -0.5353616478134361, -0.44631360818507515, 0.11163462482008807]) == 8
 
 TODO: this should generate the Σ, Π which are needed.  Right now it's generating one row of that, effectively.  
-There is an issue w/ Characteristics == 0
+TODO: looks like this is too long by one element?  It's generating a vector of means and a VCV for N shocks.
+So 3 shocks gives [ μ_1, μ_2, μ_3], [ σ_1, ρ_12, ρ_13; ρ_21, σ_2, ρ_23; ρ_31, ρ_32, σ_3]
+If I want a mean, it's not being used.    
 """
 function InitialParams(Characteristics, x...; rand_init = true )
     Random.seed!(323)
@@ -669,6 +674,7 @@ function InitialParams(Characteristics, x...; rand_init = true )
     for i = 1:Characteristics 
         vcv[i,i] = abs(vcv[i,i])
     end
+    # tODO - identity matrix of dim #(characteristics) here.  Zeros(Characteristics,Characteristics).+I(Characteristics)
     if Characteristics > 0  
         return vcat(arr, rand(Float64,1,Characteristics), vcv ), ds, first_ix  # can return len if need params less random coeffs.  
     else
