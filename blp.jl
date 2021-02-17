@@ -375,6 +375,7 @@ us.≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
 # TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
 # TODO - made 40% faster, but can I do more?   multithreading makes max_time worse, FYI.
+TODO - there is no elegant way to handle the random coefficient issue w/ the current parameter arrangement.
 """
 function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array, pd::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
@@ -618,9 +619,15 @@ Can set rand_init = false to start from a particular spot.
 - A vector of tuples recording where each demographic item stops and finishes
 - Followed by the locations of the means of the random coefficients.
 - Followed by the locations of the variances of the random coefficients.  
+- The last #(characteristics) + #(characteristics) × #(characteristics) items should be handled carefully.  
+- For each characteristic i, the first element in this block is the mean.
+- of the last #(c) × #(c), the i-th element of row i is the variance.  The j ≂̸ i are the covariances among different product characteristics.
+- So when #c = 2, μ = [μ1, μ2], Σ = [σ1, ρ12; ρ21, σ2]
+- Then for each individual we have drawn N(0,1) shocks η', so the shock for the individual is actually: η_i = μ_i + η'_i*σ_i
+- This appears interacted w/ the i-th random characteristic
+- But also in the j-th random characteristic via ρ_ij ( η_j ) = ρ_ij ( μ_i + η'_i*σ_i)
 
 ## Test ## 
-- broken ATM since another argument was added.  
 mkt_chars = CSV.read("./state_demographics.csv", DataFrame) ;
 
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop]);
