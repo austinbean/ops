@@ -382,7 +382,8 @@ function Util(demographics, products_char::Array, δ::Array, params::Array, util
     num_prods, num_chars = size(products_char)
     ZeroOut(pd)
     for j = 1:size(pd,1)   # == size(params,2) 
-        for i = 1:size(demographics,1) # FIXME - demographics column has different dimensions from params.  
+        # TODO - this would be stupidly brittle if I did size(demographics,1)-2.  
+        for i = 1:size(demographics,1)                          # NOTE: demographics column has different dimensions from params (shorter, on purpose, see InitialParams).  
             @inbounds pd[j] += params[i,j]*demographics[i]      # this term is constant across the products
         end 
     end 
@@ -619,13 +620,14 @@ Can set rand_init = false to start from a particular spot.
 - A vector of tuples recording where each demographic item stops and finishes
 - Followed by the locations of the means of the random coefficients.
 - Followed by the locations of the variances of the random coefficients.  
-- The last #(characteristics) + #(characteristics) × #(characteristics) items should be handled carefully.  
-- For each characteristic i, the first element in this block is the mean.
-- of the last #(c) × #(c), the i-th element of row i is the variance.  The j ≂̸ i are the covariances among different product characteristics.
-- So when #c = 2, μ = [μ1, μ2], Σ = [σ1, ρ12; ρ21, σ2]
+- The last 2*#(characteristics) + [#(characteristics) × #(characteristics)] items should be handled carefully.  
+- For each characteristic i, the last element in the block is the variance. 
+- For each characteristic i, the second last in this block is the mean.
+- the #(c) × #(c) prior to that, the i-th element of row i is the σ.  The j ≂̸ i are the covariances among different product characteristics.
 - Then for each individual we have drawn N(0,1) shocks η', so the shock for the individual is actually: η_i = μ_i + η'_i*σ_i
 - This appears interacted w/ the i-th random characteristic
 - But also in the j-th random characteristic via ρ_ij ( η_j ) = ρ_ij ( μ_i + η'_i*σ_i)
+- Params vector returned by initial params is LONGER than demographics.  
 
 ## Test ## 
 mkt_chars = CSV.read("./state_demographics.csv", DataFrame) ;
@@ -646,10 +648,7 @@ a1, b1 = InitialParams(3, race, disability)
 b1 == [(1,6), (7,8)]
 sum(a1 .≈ [  1.065729740994666, -0.829056350999318,  0.8962148070867403,  1.0436992067470956,  0.07009106904271295, -0.5353616478134361, -0.44631360818507515, 0.11163462482008807]) == 8
 
-TODO: this should generate the Σ, Π which are needed.  Right now it's generating one row of that, effectively.  
-TODO: looks like this is too long by one element?  It's generating a vector of means and a VCV for N shocks.
-So 3 shocks gives [ μ_1, μ_2, μ_3], [ σ_1, ρ_12, ρ_13; ρ_21, σ_2, ρ_23; ρ_31, ρ_32, σ_3]
-If I want a mean, it's not being used.    
+TODO: indices are not right, but they aren't being used so whatever.     
 """
 function InitialParams(Characteristics, x...; rand_init = true )
     Random.seed!(323)
@@ -673,17 +672,20 @@ function InitialParams(Characteristics, x...; rand_init = true )
         arr[j,:] .= 0.0   # reset these back to zero to make multiplication easier.  
     end 
     if Characteristics > 0 
+        # means of the characteristics.  
+        push!(ds, (curr,curr+Characteristics-1))
+        curr = curr +max(Characteristics,1)
+        push!(ds, (curr,curr+Characteristics-1))
+        # duplicate this to get the variances.
+        curr += 1
         push!(ds, (curr,curr+Characteristics-1))
         curr = curr +max(Characteristics,1)
         push!(ds, (curr,curr+Characteristics-1))
     end  # NB:If characteristics == 0, vcat below has the correct dimension.  
     vcv =  rand(Float64, Characteristics, Characteristics)
-    for i = 1:Characteristics 
-        vcv[i,i] = abs(vcv[i,i])
-    end
     # tODO - identity matrix of dim #(characteristics) here.  Zeros(Characteristics,Characteristics).+I(Characteristics)
-    if Characteristics > 0  
-        return vcat(arr, rand(Float64,1,Characteristics), vcv ), ds, first_ix  # can return len if need params less random coeffs.  
+    if Characteristics > 0   # Order below: parameters, means, variances, correlation parameters Ρ.
+        return vcat(arr, vcv, rand(Float64,1,Characteristics), abs.(rand(Float64,1,Characteristics)) ), ds, first_ix  # can return len if need params less random coeffs.  
     else
         return arr, ds, first_ix # special case when there are no random characteristics - not that relevant.  
     end 
