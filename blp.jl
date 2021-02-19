@@ -203,7 +203,7 @@ N_individuals = 100
 
 N_characteristics = 3
 
-sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop)
+sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop)
 
 # returns a 19 × 100 × 52 (characteristics × individuals × markets) array 
 """
@@ -211,14 +211,13 @@ function PopMarkets(M, S, Ch, x...)
     # get the simulated for S individuals demographics over all of the markets M w/ Ch characteristics and x... demographics.  
     length = size( Sampler(1, x...) , 1)
     mkts = size(M,1)
-    # TODO - output to be "ch" longer, for a mean for each param 
-    outp = zeros(Float64, length+Ch, S, mkts)
+    outp = zeros(Float64, length+Ch, S, mkts) # hold space open for the ν = μ + σ*ϵ version of the shocks.
+    shocks = zeros(Float64, Ch, S, mkts)      # keep the ϵ's to make the shocks later.  
     for i = 1:mkts 
-        outp[1:length,:,i] += Population(S, i, x...) #
-        # TODO - add "ch" 1's here, prior to this.  
-        outp[(length+1):end,:,i] += randn(Ch, S)     # shocks, but think carefully about this.  These go on product features.  
+        outp[1:length,:,i] += Population(S, i, x...) 
+        shocks[1:Ch,:,i] += randn(Ch, S)     # shocks, but think carefully about this.  These go on product features.  
     end 
-    return outp 
+    return outp, shocks  # separately holding demographics, shocks.  
 end 
 
 """
@@ -235,7 +234,7 @@ Operates in-place on mean_utils.  Ordered returned is products × markets in mea
 ## TEST ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 
@@ -279,7 +278,7 @@ This should operate in-place on the vector δ
 ## TEST ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 mu = zeros(size(shares[1])[1]);
@@ -295,7 +294,7 @@ sum(ind_u) # does sum to nearly one.
 ## Test All markets ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
 muts = zeros(size(shares[1])[1], 52);
 ind_u = zeros(size(shares[1])[1]); 
 for i = 1:size(markets,3) 
@@ -344,20 +343,25 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 ## TEST ##
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
 cinc = markets[:,:,10];
+cin_shock = shocks[:,:,10];
 utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
 pd = zeros(Float64,3)
 shr = zeros(size(shares[1])[1])
-Util(cinc[:,1], charcs[1], shr, params_indices[1], utils, pd );
+Util(cinc[:,1], cin_shock[:,1], charcs[1], shr, params_indices[1], params_indices[2] ,utils, pd );
 
 @benchmark Util(cinc[:,1], charcs[1], δ, params_indices[1], utils)
-
+  minimum time:     67.992 μs (0.00% GC)
+  median time:      69.050 μs (0.00% GC)
+  mean time:        75.198 μs (2.18% GC)
+  maximum time:     1.942 ms (94.05% GC)
+  
 ## Test Across individuals. 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
 cinc = markets[:,:,10];
 utils = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
@@ -375,28 +379,37 @@ us.≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
 # TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
 # TODO - made 40% faster, but can I do more?   multithreading makes max_time worse, FYI.
-TODO - there is no elegant way to handle the random coefficient issue w/ the current parameter arrangement.
 """
-function Util(demographics, products_char::Array, δ::Array, params::Array, utils::Array, pd::Array)
+function Util(demographics, 
+              shocks, 
+              products_char::Array, 
+              δ::Array, 
+              demo_params::Array, 
+              shock_params::Array, 
+              utils::Array, 
+              pd::Array)
     ZeroOut(utils)                                     # will hold utility for one guy over all of the products 
     num_prods, num_chars = size(products_char)
     ZeroOut(pd)
+    demo_ix = size(demographics,1)-size(pd,1) # Starting point.  This is terrible.  
+    for k = 1:size(pd,1) ## TODO - this is awful.  Fix it.  
+        @inbounds demographics[demo_ix+k] = shock_params[1,k] + shock_params[2,k]*shocks[k] # Creates the characteristic-specific shock first.  
+    end 
     for j = 1:size(pd,1)   # == size(params,2) 
-        # TODO - this would be stupidly brittle if I did size(demographics,1)-2.  
         for i = 1:size(demographics,1)                          # NOTE: demographics column has different dimensions from params (shorter, on purpose, see InitialParams).  
-            @inbounds pd[j] += params[i,j]*demographics[i]      # this term is constant across the products
+            @inbounds pd[j] += demo_params[i,j]*demographics[i]      # this term is constant across the products
         end 
     end 
     utils .+= δ
-    for i = 1:num_prods                                # NB: multithreading here makes max_time worse by 6x - 8x
-        tmp_sum = 0.0                                  # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
-        for j = 3:num_chars                            # TODO - this can be redone so that it doesn't require keeping track of this 3.
-            @inbounds tmp_sum += products_char[i,j]*pd[j]  
+    for i = 1:num_prods                                     # NB: multithreading here makes max_time worse by 6x - 8x
+        tmp_sum = 0.0                                       # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
+        for j = 3:num_chars                                 # TODO - this can be redone so that it doesn't require keeping track of this 3.
+            @inbounds tmp_sum += products_char[i,j]*pd[j]   # TODO - 90% of the allocation in this function takes place here.
         end 
-        utils[i] += tmp_sum 
+        utils[i] += tmp_sum                                 # TODO - the other 10% of the allocation takes place here. 
     end   
-    mx_u = maximum(utils)                              # max for numerical stability - faster than doing the comparison every step in the main loop         
-    sm = 1/exp(mx_u)                                   # denominator: 1/exp(mx_u) + sum (exp ( util - mx_u))
+    mx_u = maximum(utils)                                   # max for numerical stability - faster than doing the comparison every step in the main loop         
+    sm = 1/exp(mx_u)                                        # denominator: 1/exp(mx_u) + sum (exp ( util - mx_u))
     for i = 1:length(utils)
         @inbounds sm += exp(utils[i]-mx_u)
         @inbounds utils[i] = exp(utils[i] - mx_u)
@@ -442,7 +455,7 @@ This should be:
 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 market_shares = zeros(size(shares[1])[1], 52);
@@ -527,7 +540,7 @@ EG have Contraction return δ and a MKT identifier tuple.  Easy fix.
 
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets = MKT(10,3);
+params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 
@@ -617,8 +630,9 @@ Can set rand_init = false to start from a particular spot.
 - The `x...` features are "dummy trap coded".  Fix first value here to zero.
 - `rand_init` = true; set to false to start from some particular set of parameters
 - The returned items are a vector w/ the parameter values 
-- A vector of tuples recording where each demographic item stops and finishes
-- Followed by the locations of the means of the random coefficients.
+- FIXME: [Not correct at the moment] A vector of tuples recording where each demographic item stops and finishes
+- Then a separate matrix w/ the random coefficient pieces.  
+- the locations of the means of the random coefficients.
 - Followed by the locations of the variances of the random coefficients.  
 - The last 2*#(characteristics) + [#(characteristics) × #(characteristics)] items should be handled carefully.  
 - For each characteristic i, the last element in the block is the variance. 
@@ -642,7 +656,7 @@ race = (OH(size(race_w, 2)), MFW(race_w));
 
 disability = (OH(size(disability_w, 2)), MFW(disability_w));
 
-a1, b1 = InitialParams(3, race, disability)
+a1, b1, c1 = InitialParams(3, race, disability)
 
 - not right ATM since another argument added 
 b1 == [(1,6), (7,8)]
@@ -685,7 +699,7 @@ function InitialParams(Characteristics, x...; rand_init = true )
     vcv =  rand(Float64, Characteristics, Characteristics)
     # tODO - identity matrix of dim #(characteristics) here.  Zeros(Characteristics,Characteristics).+I(Characteristics)
     if Characteristics > 0   # Order below: parameters, means, variances, correlation parameters Ρ.
-        return vcat(arr, vcv, rand(Float64,1,Characteristics), abs.(rand(Float64,1,Characteristics)) ), ds, first_ix  # can return len if need params less random coeffs.  
+        return vcat(arr, vcv), vcat(rand(Float64,1,Characteristics), abs.(rand(Float64,1,Characteristics))), ds, first_ix  # can return len if need params less random coeffs.  
     else
         return arr, ds, first_ix # special case when there are no random characteristics - not that relevant.  
     end 
@@ -746,10 +760,10 @@ function MKT(N, C)
     params = InitialParams(3, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # NB size of this is: ("features" = demographics + characteristics) × number of individuals × # of markets 
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
-    sim_individuals = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
+    sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # products w/ their characteristics.   
     # shares, when available. 
-    return params, sim_individuals  
+    return params, sim_individuals, shocks 
 end 
 
 
