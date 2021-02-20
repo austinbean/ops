@@ -298,10 +298,7 @@ TODO - mean_utils should be an array with dimension equal to the number of marke
 TODO - ind_utils can be pre-allocated at a higher level.  
 TIMING - takes basically exactly 10x as long (and allocates 10x) as Util when individuals == 10.
 
-New arguments to size correctly: 
-              shocks, 
-              shock_params::Array, 
-              pd::Array)
+
 """
 function PredShare(mkt, shk, params::Array, shk_params::Array, δ::Array, products::Array, market_shares,  ind_utils::Array, pd::Array)
     characs, individuals = size(mkt)                # number of features, number of individuals.  
@@ -455,12 +452,13 @@ charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
+cinc_shock = shocks[:,:,10];
 market_shares = zeros(size(shares[1])[1], 52);
-AllMarketShares(markets, params_indices[1], delta, charcs[1], market_shares)
+#AllMarketShares(markets, params_indices[1], delta, charcs[1], market_shares)
     # TODO - indexing here will allocate, @view instead. 
     emp_shr = @view shares[1][:,3] 
     pred_shr = @view  market_shares[:,1]
-Contraction(cinc, params_indices[1], charcs[1], emp_shr)
+Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs[1], emp_shr)
 
 
 This allocates a lot and takes a while, b/c it is computing PredShares until convergence.  
@@ -469,14 +467,17 @@ numerically stable version frequently gives NaN, probably due to small mkt share
 Timing note: all overhead is due to Utils, via PredShares
 TODO - could define δ, new_δ in here.  And predicted shares too.  These would be sized according to empirical shares.
 
+This is the logical place to create the vectors pd, etc. since this is getting sent to other processors.  
+
 """
-function Contraction(mkt::Array, params::Array, products::Array, empirical_shares; ϵ = 1e-6, max_it = 100)
+function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares; ϵ = 1e-6, max_it = 100)
     conv = 1.0
     curr_its = 1
-    us = zeros(size(products,1)) # TODO - check that this will be right.  
+    us = zeros(size(products,1))                      # TODO - check that this will be right.  
     δ = zeros(size(empirical_shares)).+=(1/size(empirical_shares,1))
-    new_δ = zeros(size(empirical_shares))    # TODO - these can be started at a better value, like log(s) - log(s_0)
+    new_δ = zeros(size(empirical_shares))             # TODO - these can be started at a better value, like log(s) - log(s_0)
     predicted_shares = zeros(size(empirical_shares))
+    pd = zeros(Float64, size(mkt_shock,1))            # The number of random coefficients.
     while (conv > ϵ) & (curr_its < max_it)
         # debugging related... 
         conv = norm(new_δ.-δ, Inf) 
@@ -485,7 +486,7 @@ function Contraction(mkt::Array, params::Array, products::Array, empirical_share
             println("iteration: ", curr_its, " conv: ", conv)
             println("Inf: ", conv, " Two: ", two_norm)
         end 
-        PredShare(mkt, params, new_δ, products, predicted_shares, us)
+        PredShare(mkt,mkt_shock, params, shk_params, new_δ, products, predicted_shares, us, pd)
         # now update the δ
         for i = 1:length(new_δ)
             δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
