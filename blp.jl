@@ -281,39 +281,36 @@ charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_hig
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
+cin_shock = shocks[:,:,10];
 mu = zeros(size(shares[1])[1]);
 δ = zeros(size(shares[1])[1]);
 ind_u = zeros(size(shares[1])[1]); 
-PredShare(cinc, params_indices[1], δ, charcs[1], mu, ind_u)
-
-@benchmark PredShare(cinc, params_indices[1], δ, charcs[1], mu, ind_u)
+p = zeros(Float64,3);
+PredShare(cinc, cin_shock, params_indices[1],params_indices[2] , δ, charcs[1], mu, ind_u, p)
+@benchmark PredShare(cinc, cin_shock, params_indices[1], δ, charcs[1], mu, ind_u, p)
 
 
 sum(ind_u) # does sum to nearly one.  
 
-## Test All markets ##
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
-params_indices, markets, shocks = MKT(10,3);
-muts = zeros(size(shares[1])[1], 52);
-ind_u = zeros(size(shares[1])[1]); 
-for i = 1:size(markets,3) 
-    b = @view muts[:,i] # note this!
-        # TODO - not that ind_u sums to 1, but b does not.  
-    PredShare(markets[:,:,i], params_indices[1], zeros(size(shares[1])[1]), charcs[1], b, ind_u)
-    println("pred share: ", sum(b))   
-end
+
 
 TODO - mean_utils should be an array with dimension equal to the number of markets.  Each market gets a row 
 TODO - ind_utils can be pre-allocated at a higher level.  
 TIMING - takes basically exactly 10x as long (and allocates 10x) as Util when individuals == 10.
+
+New arguments to size correctly: 
+              shocks, 
+              shock_params::Array, 
+              pd::Array)
 """
-function PredShare(mkt, params::Array, δ::Array, products::Array, market_shares, ind_utils::Array)
+function PredShare(mkt, shk, params::Array, shk_params::Array, δ::Array, products::Array, market_shares,  ind_utils::Array, pd::Array)
     characs, individuals = size(mkt)                # number of features, number of individuals.  
     ZeroOut(market_shares)                          # be careful w/ this since it will zero out the **entire** market_shares Array.
     for i = 1:individuals
         v1 = @view mkt[:,i]                         # selects demographics for one "person" w/out allocating
-        Util( v1, products, δ, params, ind_utils )  # computes utility for ALL products in market for one person
+        s1 = @view shk[:,i]                         
+        # TODO - should all of these arguments be views??
+        Util( v1, s1, products, δ, params, shk_params, ind_utils, pd )  # computes utility for ALL products in market for one person
         market_shares .+= ind_utils          
     end
     market_shares ./=individuals                    # take mean over individuals in the market - divide by N_individuals. 
