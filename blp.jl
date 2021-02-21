@@ -465,12 +465,10 @@ This allocates a lot and takes a while, b/c it is computing PredShares until con
 numerically stable version frequently gives NaN, probably due to small mkt shares?   
 
 Timing note: all overhead is due to Utils, via PredShares
-TODO - could define δ, new_δ in here.  And predicted shares too.  These would be sized according to empirical shares.
-
-This is the logical place to create the vectors pd, etc. since this is getting sent to other processors.  
+# TODO - needs to take a market identifier and return one.  Easy.   
 
 """
-function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares; ϵ = 1e-6, max_it = 100)
+function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 100)
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1))                      # TODO - check that this will be right.  
@@ -494,7 +492,7 @@ function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Ar
         end 
         curr_its += 1
     end 
-    return new_δ
+    return ID, new_δ
 end 
 
 """
@@ -505,16 +503,7 @@ See also MST RCNL.f90 lines 4737 - 4775 for an implementation
 TODO
 """
 function FastContraction(mkt::Array, params::Array, products::Array, empirical_shares, predicted_shares, δ::Array, new_δ::Array ; ϵ = 1e-6, max_it = 5_000_000)
-    conv = 1.0
-    curr_its = 1
-    us = zeros(size(products,1)) # TODO - check that this will be right. 
-    us = zeros(size(products,1)) # TODO - check that this will be right.  
-    δ = zeros(size(empirical_shares)).+=(1/size(empirical_shares,1))
-    new_δ = zeros(size(empirical_shares))    # TODO - these can be started at a better value, like log(s) - log(s_0)
-    predicted_shares = zeros(size(empirical_shares)) 
-    #δ = exp.(δ) # to use the more numerically stable iteration
-    # TODO - copy latest changed version.  
-    return new_δ
+    return nothing 
 end 
 
 
@@ -549,17 +538,29 @@ TODO - since I don't know what will finish when Contraction should return a mark
 TODO - need to fix the products × params issue.  
 
 """
-function FormError(mkts, params::Array, products::Array, empirical_shares; random_coeffs = 3)
+function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products::Array, empirical_shares, IDs; random_coeffs = 3)
     demos, individuals, num_mkts = size(mkts)
     # collect all the markets in a vector of Array{Float,2}
     m = [ mkts[:,:,k] for k = 1:size(mkts,3)]  # faster than a loop   
+    s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
     p = repeat(params, num_mkts)
+    sp = repeat(shk_params, num_mkts)
+    # TODO - repeat products?  what about empirical shares?
+    # what are pr / sh in zip below?  Why are they not replicated?   They might have the right dimension but if they are needed everywhere
+    # then they must be replicated.  
+
 # TODO - fix tolerance when debugging is done!
     # x[1] - markets
-    # x[2] - parameters 
-    # x[3] - products
-    # x[4] - empirical shares
-    new_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4]), zip(m, p, pr, sh))
+    # x[2] - market shocks
+    # x[3] - parameters 
+    # x[4] - shock parameters
+    # x[5] - products
+    # x[6] - empirical shares
+    # x[7] - market-level ID's 
+        # TODO - Contraction has additional arguments. 
+        # also includes an ID 
+        # Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 100)
+    new_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4]), zip(m, s, p, sp, pr, sh, IDs))
     println("finished contracting")
 # TODO - get the parameter order correct - params has higher dim.  
     error = new_δ - products[3,:]*params # TODO - not all of params.  
