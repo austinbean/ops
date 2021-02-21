@@ -481,8 +481,7 @@ function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Ar
         conv = norm(new_δ.-δ, Inf) 
         two_norm = norm(new_δ.-δ, 2)
         if curr_its%1000 == 0
-            println("iteration: ", curr_its, " conv: ", conv)
-            println("Inf: ", conv, " Two: ", two_norm)
+            @info "Market / iteration  / conv / 2norm" ID curr_its conv two_norm
         end 
         PredShare(mkt,mkt_shock, params, shk_params, new_δ, products, predicted_shares, us, pd)
         # now update the δ
@@ -524,7 +523,7 @@ NB: some care should be taken to make sure these can be re-identified.
 EG have Contraction return δ and a MKT identifier tuple.  Easy fix.  
 
 # Test 
-
+TODO - here I have the markets as years, but I in mkts I have the markets as states.
 shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
 params_indices, markets, shocks = MKT(10,3);
@@ -536,6 +535,7 @@ FormError(cinc, params_indices[1], charcs[1], shares[1])
 
 TODO - since I don't know what will finish when Contraction should return a market-level identifier.
 TODO - need to fix the products × params issue.  
+TODO - fix tolerance when debugging is done!
 
 """
 function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products::Array, empirical_shares, IDs; random_coeffs = 3)
@@ -545,23 +545,18 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
     p = repeat(params, num_mkts)
     sp = repeat(shk_params, num_mkts)
-    # TODO - repeat products?  what about empirical shares?
-    # what are pr / sh in zip below?  Why are they not replicated?   They might have the right dimension but if they are needed everywhere
-    # then they must be replicated.  
 
-# TODO - fix tolerance when debugging is done!
-    # x[1] - markets
-    # x[2] - market shocks
-    # x[3] - parameters 
-    # x[4] - shock parameters
-    # x[5] - products
-    # x[6] - empirical shares
+    # x[1] - markets, m as above
+    # x[2] - market shocks, s as above
+    # x[3] - parameters, repeated for each processor
+    # x[4] - shock parameters, repeated for each processor 
+    # x[5] - products, comes w/ right dimension.
+    # x[6] - empirical shares, comes w/ right dimension.
     # x[7] - market-level ID's 
-        # TODO - Contraction has additional arguments. 
-        # also includes an ID 
-        # Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 100)
-    new_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4]), zip(m, s, p, sp, pr, sh, IDs))
+
+    new_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, products, empirical_shares, IDs))
     println("finished contracting")
+    # TODO - new_δ is actually now a set of tuples (ID, )
 # TODO - get the parameter order correct - params has higher dim.  
     error = new_δ - products[3,:]*params # TODO - not all of params.  
     
