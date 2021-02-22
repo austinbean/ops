@@ -481,7 +481,7 @@ function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Ar
         conv = norm(new_δ.-δ, Inf) 
         two_norm = norm(new_δ.-δ, 2)
         if curr_its%1000 == 0
-            @info "Market / iteration  / conv / 2norm" ID curr_its conv two_norm
+            @info "---- Update ----" ID curr_its conv two_norm
         end 
         PredShare(mkt,mkt_shock, params, shk_params, new_δ, products, predicted_shares, us, pd)
         # now update the δ
@@ -553,11 +553,11 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     # x[5] - products, comes w/ right dimension.
     # x[6] - empirical shares, comes w/ right dimension.
     # x[7] - market-level ID's 
-
-    new_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, products, empirical_shares, IDs))
+    contract_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, products, empirical_shares, IDs))
+    labels, new_δ = ([x[1] for x in contract_δ], [x[2] for x in contract_δ]) # separate to regress.
     println("finished contracting")
-    # TODO - new_δ is actually now a set of tuples (ID, )
-# TODO - get the parameter order correct - params has higher dim.  
+    # TODO - get the parameter order correct - params has higher dim.  
+    # 
     error = new_δ - products[3,:]*params # TODO - not all of params.  
     
     return error  # this must be sent back to the main process  
@@ -575,7 +575,6 @@ I think I want to:
 - save the δ terms as a shared array 
 
 
-pmap is a little more subtle than it first seems.  
 
 """
 function GMM()
@@ -585,7 +584,14 @@ function GMM()
 end 
 
 
+"""
+`Instruments`
 
+TODO - need to create the set of instruments to match w/ the moments
+"""
+function Instruments()
+    return nothing 
+end 
 
 
 
