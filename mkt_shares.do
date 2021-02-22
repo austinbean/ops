@@ -193,126 +193,40 @@ preserve
 	collapse (firstnm) ndc_code (mean) avg_deduct avg_copay [fw=state_tot_pres_high] , by(state yr)
 	replace ndc_code = "00000000000"
 	save "${hcci_located}state_yr_composite_inside_price.dta", replace
+	merge 1:1 state yr ndc_code using "${hcci_located}state_yr_composite_inside_count.dta"
+	drop _merge 
+	save "${hcci_located}state_year_composite_inside.dta", replace
 restore 
 
 	******* OUTSIDE OPTION - by state year.  ******* 
-
-preserve 
-	bysort state yr: egen st_pop_count = sum(tot_pat_high)
-	bysort state yr: egen st_pres_count = sum(tot_pres_high)
-	gen outside_patients = st_pop_count*0.2               // adding 20% of the population as outside option choosers.
-	gen outside_pres = outside_patients*2.25              // 2.25 prescriptions per outside patient (the mean)
-	replace st_pop_count = st_pop_count + outside_patients 
-	gen total_state_market = tot_pres_high + outside_pres // generated outside option patients, got their prescriptions, then added
-	gen market_shares = tot_pres_high/total_state_market
-	keep if market_shares != .
-	expand 2 if ndc_code == "00000000000", gen(dd)        // this is the composite inside good
-	replace ndc_code = "99999999999" if dd == 1           // this is the outside option 
-	replace market_shares = outside_pres/total_state_market if dd == 1 // market share for the outside option.  
-restore 
+	drop if p75 == 1                                         // drop the lower 75 %ile by quantity
+	append using "${hcci_located}state_year_composite_inside.dta" // add back the composite inside good
+	bysort state yr: egen st_pop_count = sum(tot_pat_high)   // total number of patients among top 25%
+	bysort state yr: egen st_pres_count = sum(tot_pres_high) // total number of prescriptions among top 25%
+	gen outside_patients = st_pop_count*0.2                  // adding 20% of the population as outside option choosers.
+	gen outside_pres = outside_patients*2.25                 // 2.25 prescriptions per outside patient (the mean)
+	replace st_pop_count = st_pop_count + outside_patients   // total patients in state market, including outside option patients
+	replace st_pres_count = st_pres_count + outside_pres     // total number of prescriptions including outside option patients pres. added
+	expand 2 if ndc_code == "00000000000", gen(dd)           // this is the composite inside good
+	replace ndc_code = "99999999999" if dd == 1              // this is the outside option 
+	replace tot_pres_high = outside_pres if ndc_code == "99999999999"
+	gen market_shares = tot_pres_high/st_pres_count          // these do work out to be 1 across all markets.  
+ 	keep if market_shares != .
 	
+	
+	****************** PRODUCT FEATURES  *********************
+	merge m:1 ndc_code using "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta"
+	* the only unmerged are: small market-share products, plus composite inside and outside options.
+	drop if _merge == 2 // small market share products 
+	drop _merge 
+	
+	
+	* TODO - where is this file?  
+	merge m:1 productndc using "${op_fp}simple_product_chars.dta"
+
+
+stop	
 
 	* What's left?  Convert these into shares using the outside option. 
 
-
-
- * HERE NEED something about the outside option.
-	* number of people in the state?  
-	* we do have total # of opioid patients and total # of privately insured patients by state, e.g. 
-	* How many prescriptions?  That's a different quantity.
-	* total prescriptions statewide, using low pres and low patients
-		* this needs unique patients per state year.  So: how many unique patients get what total # of prescriptions 
-		* this is in opioid_patients_state_year - get from this the prescriptions per opioid patient, then from the 
-		* number of opioid patients get the number of prescriptions.  
-	* Then, this is something like: predicted number of opioid prescriptions GIVEN the average # of prescriptions 
-	* per patient and the number of patients we expect to be opioid users.  
-	
-		* Simpler version is: everyone over age 18 is potentially in the market.
-	
-	* total prescriptions
-bysort state yr: egen tot_mkt_l = sum(tot_pres_low)   // low assumption 
-bysort state yr: egen tot_mkt_h = sum(tot_pres_high)  // high assumption 
-
-	* total patients per state:
-bysort state yr: egen tot_pat_l = sum(tot_pat_low)
-bysort state yr: egen tot_pat_h = sum(tot_pat_high)
-
-	* avg prescriptions per patient taking them (by state year).
-gen avg_pres_low = floor(tot_mkt_l/tot_pat_h) // smallest # prescriptions / largest # patients
-gen avg_pres_high = ceil(tot_mkt_h/tot_pat_l) // largest # prescriptions / smallest # patients
-
-	* basically 1 - 3 prescriptions per patient/year.  Lower than I thought.
-
-	stop
-	
-preserve 
-		* make separate list w/ total patients per state
-	keep state yr tot_mkt_l tot_mkt_h 
-	duplicates drop state yr, force 
-	rename *, upper
-	save "${hcci_located}state_data/tot_prescriptions_state_year.dta", replace
-restore 
-
-* TODO::
-	* How many pills?  Yet another, but requires detailed NDC data
-
-	* MME morphine - is there a market share notion here?  Yes, there is: MME in some form.  Requires NDC.  
-
-
-
-
-
-* need to add ALL drugs to EVERY state, but only for the years they are available
-	levelsof yr, local(all_years)
-	foreach yr1 of local all_years{
-		preserve 
-		keep if yr == `yr1'
-		keep ndc_code 
-		duplicates drop ndc_code, force 
-		di "`yr1'"
-		count 
-		save "${hcci_located}state_data/ndcs_for_`yr1'.dta", replace
-		restore
-	}
-	* these lists seem a little short.  
-	* Can use the longer list from FDA.
-	
-	
-* combine these lists of NDC by year:
-
-use "${hcci_located}state_data/ndcs_for_2009.dta", clear
-gen yr2009 = 2009
-foreach yr of numlist 2010(1)2013{
-	append using "${hcci_located}state_data/ndcs_for_`yr'.dta", gen(yr`yr')
-	replace yr`yr' = `yr' if yr`yr' != 0
-}
-egen year = rowtotal(yr*)
-drop yr*
-gen ctr = 1
-bysort ndc_code: egen tot_year = total(ctr)
-drop ctr 
-bysort ndc_code: egen mnyear = min(year)
-bysort ndc_code: egen mxyear = max(year)
-drop year 
-duplicates drop ndc_code, force
-	
-	
-* every drug, every state combination:
-
-cross using "${demo_filep}state_names_and_geoids.dta"	
-gen np_mkt_share = 0
-save "${hcci_located}state_data/all_ndcs_all_states.dta", replace
-
-* Need to merge back the actual quantity information here.  
-
-use "${hcci_located}state_data/all_painmeds_by_state_year.dta", clear
-	
-	
-* MKT shares initial -> contains non-opioids 
-
-bysort state yr: egen tot_m_h = sum(tot_pat_high)
-bysort state yr: egen tot_m_l = sum(tot_pat_low)
-
-gen ms_high = tot_pat_high/tot_m_h 
-gen ms_low = tot_pat_low/tot_m_l
 
