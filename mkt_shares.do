@@ -8,7 +8,7 @@
 
 local whereami = "austinbean"
 global demo_filep = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/census_demographic_files/"
-
+global op_fp = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
 global hcci_located  "/Users/`whereami'/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/"
 di "${hcci_located}"
 
@@ -219,10 +219,20 @@ restore
 	* the only unmerged are: small market-share products, plus composite inside and outside options.
 	drop if _merge == 2 // small market share products 
 	drop _merge 
+	/*
+	with just this information, I can duplicate
+	- active ingredients
+	- dea schedule
+	- route of administration 
+	
+	... still really want the MME  
+	*/
 	
 	
-	* TODO - where is this file?  
+	* simple product characteristics  
 	merge m:1 productndc using "${op_fp}simple_product_chars.dta"
+	* TODO outside good all zeros.
+	* TODO composite inside as well?  not price
 
 
 stop	
