@@ -228,15 +228,52 @@ restore
 	... still really want the MME  
 	*/
 	
+		/*
+	https://www.cdc.gov/drugoverdose/pdf/calculating_total_daily_dose-a.pdf
+	OPIOID (doses in mg/day except where noted) CONVERSION FACTOR
+Codeine 0.15
+Fentanyl transdermal (in mcg/hr) 2.4
+Hydrocodone 1
+Hydromorphone 4
+Methadone
+1-20 mg/day 4
+21-40 mg/day 8
+41-60 mg/day 10
+≥ 61-80 mg/day 12
+Morphine 1
+Oxycodone 1.5
+Oxymorphone 3 
+	*/
 	
-	* simple product characteristics  
-	merge m:1 productndc using "${op_fp}simple_product_chars.dta"
-	* TODO outside good all zeros.
-	* TODO composite inside as well?  not price
+	
+	split substancename, p(";")
+	split strengthunit, p(";")
+	split strengthnumber, p(";")
 
+	rename substancename xsubsname
+	rename strengthnumber xstrengthnum
+	rename strengthunit xstrengthu 
+	
+	reshape long substancename strengthunit strengthnumber, i(ndc_code) j(sbctr)
+	drop if substancename == ""
+	* TODO - can also think about identifying painkillers this way to get market share right.  
+		* MME 
+	gen codeine = regexm(lower(substancename), "codeine")
+	gen fentanyl = regexm(lower(substancename), "fentanyl")
+	gen hydrocodone = regexm(lower(substancename), "hydrocodone")
+	gen hydromorphone = regexm(lower(substancename), "hydromorphone")
+	gen methadone = regexm(lower(substancename), "methadone")
+	gen morphine = regexm(lower(substancename), "morphine")
+	gen oxycodone = regexm(lower(substancename), "oxycodone")
+	gen oxymorphone = regexm(lower(substancename), "oxymorphone")
+	
+	* morphine sulfate 
+	
+	* redo after reshape.  
+	egen non_zero_mme = rowtotal(codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone)
 
-stop	
+	*
+	gen MME = 0 if non_zero_mme == 0
 
-	* What's left?  Convert these into shares using the outside option. 
-
-
+		
+	
