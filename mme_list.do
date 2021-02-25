@@ -13,17 +13,17 @@ global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 
 * opioids w/ MME from CDC, plus maybe some additions.  Source was pdmpassist.org  
 	* If this list has all of the NDCs, then it's a better list anyway.  So: use this instead of what we already have.  Ask them to upload it as a table.  
-if 0{
-clear 
-import excel "${op_fp}Conversion Reference Table.xlsx", sheet("Opioids") firstrow
-gen productndc = substr(NDC, 1, 9)
+	if 0{
+		clear 
+		import excel "${op_fp}Conversion Reference Table.xlsx", sheet("Opioids") firstrow
+		gen productndc = substr(NDC, 1, 9)
 
-drop if MME_Conversion_Factor == . // there is one product with a missing MME 
-save "${op_fp}opioid_mme.dta", replace
+		drop if MME_Conversion_Factor == . // there is one product with a missing MME 
+		save "${op_fp}opioid_mme.dta", replace
 
 
-export delimited using "/Users/austinbean/Desktop/programs/opioids/opioid_11digitNDC_mmes.csv", replace
-}
+		export delimited using "/Users/austinbean/Desktop/programs/opioids/opioid_11digitNDC_mmes.csv", replace
+	}
 
 * another import of the CDC list:
 import excel "${op_pr}CDC_Oral_Morphine_Milligram_Equivalents_Sept_2018.xlsx", sheet("Opioids") firstrow clear
@@ -32,23 +32,6 @@ save "${op_pr}mme_by_ndc.dta", replace
 
 
 
-		/*
-	https://www.cdc.gov/drugoverdose/pdf/calculating_total_daily_dose-a.pdf
-	OPIOID (doses in mg/day except where noted) CONVERSION FACTOR
-Codeine 0.15
-Fentanyl transdermal (in mcg/hr) 2.4
-Hydrocodone 1
-Hydromorphone 4
-Methadone
-1-20 mg/day 4
-21-40 mg/day 8
-41-60 mg/day 10
-≥ 61-80 mg/day 12
-Morphine 1
-Oxycodone 1.5
-Oxymorphone 3 
-	*/
-	
 	
 /*
 https://www.cms.gov/Medicare/Prescription-Drug-Coverage/PrescriptionDrugCovContra/Downloads/Oral-MME-CFs-vFeb-2018.pdf
@@ -131,7 +114,8 @@ https://www.cdc.gov/drugoverdose/data-files/CDC_Oral_Morphine_Milligram_Equivale
 	gen oxymorphone = regexm(lower(substancename), "oxymorphone")
 	gen tramadol = regexm(lower(substancename), "tramadol")
 	egen non_zero_mme = rowtotal(codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone)
-
+		* note: no drug in the data has two opioids from this list among its ingredients.  
+	
 	preserve 
 		keep if non_zero_mme == 0 
 		save "/Users/austinbean/Desktop/programs/opioids/no_mme_active_ingredients.dta", replace
@@ -140,6 +124,7 @@ https://www.cdc.gov/drugoverdose/data-files/CDC_Oral_Morphine_Milligram_Equivale
 	keep if non_zero_mme == 1
 	
 	gen mme = 0
+	
 	if 0 { // this loop is just needed to generate some statements programmatically.  
 	qui levelsof substancename, local(subs)
 	foreach sb of local subs{
@@ -285,32 +270,4 @@ replace mme = 30 if substancename ==  "OPIUM" & strengthunit ==  "mg/1" & streng
 
 	* pentazocine
 replace mme = 18.5 if substancename == "PENTAZOCINE HYDROCHLORIDE" & strengthunit == "mg/1" & strengthnumber == "50"
-	stop
 	
-* TODO - next thing to figure out is the number of units, b/c larger package size is better.  
-	duplicates drop packagedescription, force // drops almost nothing.
-	* tablet 
-	* tablet in blister pack 
-	* capsule
-	* patch in pouch :(
-	* vial
-	* single-does in 1 pouch :(
-	* bottle 
-	* capsule in blister pack in carton :/ 
-	* aerosol metered in 1 canister 
-	* 1 kit in one blister pack 
-	* dropper, bottle 
-	* cup unit dose in 1 tray 
-	* spray in cartridge 
-	* ampule in pouch 
-	* suppository in packet 
-	* granule delayed release in carton 
-	* ampule in tray 
-	* vial multidose in carton in case 
-	* tube in carton 
-	* ampule in cello pack 
-	* tablet in pail (?)
-	* syringe in carton 
-	* at about row 700
-
-		
