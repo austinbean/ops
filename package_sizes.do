@@ -21,26 +21,59 @@ global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 
 use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
 	merge 1:1 ndc_code using "${op_pr}mme_by_ndc.dta"
-
+	drop if _merge ==2 
+	drop _merge 
 	
 	duplicates drop packagedescription, force // drops almost nothing.
 	drop if packagedescription == ""
 	gen matched = 0 
-	
-* about half are tablets:
+	gen unit_quantity = .
+* about half are tablets and/or capsules:
 
 	gen table_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= TABLET)")
 	* works except for "blister pack", where one tablet in one blister pack, 100 blister pack per carton, e.g.
 	gen blister_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= BLISTER)")
-		* there is one which was obviously wrong using the above 
-	replace matched = 1 if table_num != .
-	replace matched = 1 if blister_num != .
+	destring table_num, replace
+	destring blister_num, replace
+		* there is one which was obviously wrong using the above; "36 POUCH in 1 CARTON (0363-0421-68)  &gt; 2 TABLET, EFFERVESCENT in 1 POUCH"
+	replace unit_quantity = table_num if table_num != . & blister_num == . & matched == 0
+	replace matched = 1 if table_num != . & blister_num == . & matched == 0
+	
+	replace unit_quantity = table_num*blister_num if table_num != . & blister_num != . & matched == 0	
+	replace matched = 1 if table_num != . & blister_num != . & matched == 0	
 	
 	* when capsule is eventually followed by bottle - sometimes separated by "extended release" or other words, e.g.
 	gen capsule_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CAPSULE)(.+)(?= in 1 BOTTLE)")
+	destring capsule_num, replace
+	gen cap_bottle = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= BOTTLE in 1 (BOX|CARTON|PACKAGE))")
+	destring cap_bottle, replace
+	
+	replace unit_quantity = capsule_num if capsule_num != . & cap_bottle == . & matched == 0
+	replace matched = 1 if capsule_num != . & cap_bottle == . & matched == 0
+	
+	replace unit_quantity = capsule_num*cap_bottle if capsule_num != . & cap_bottle != . & matched == 0
+	replace matched = 1 if capsule_num != . & cap_bottle != . & matched == 0
+	
+	* capsule blister pack (in bottle/box/carton exclusively)
+	gen capblis_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CAPSULE)(.+)(?= in 1 BLISTER)")
+	destring capblis_num, replace
+	
+	gen capblis_bottle = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= BLISTER PACK in 1 (BOX|CARTON|PACKAGE))")
+	destring capblis_bottle, replace 
+	
+	replace unit_quantity = capblis_num*capblis_bottle if capblis_num != . & capblis_bottle != . & matched == 0
+	replace matched = 1 if capblis_num != . & capblis_bottle != . & matched == 0
+	
+
+	* TODO - start from here... is liquid_mult below necessary?  Not clear.
+
 		
 * decent number are liquid 
+	* TODO - this is a hard one: 6 CARTON in 1 CASE (0406-8003-12)  &gt; 1 BOTTLE, PLASTIC in 1 CARTON &gt; 120 mL in 1 BOTTLE, PLASTIC
+
 	gen liquid_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 BOTTLE)")
+	destring liquid_num, replace
+	
 	gen liquid_mult = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= BOTTLE in 1 )")
 	replace liquid_mult = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CARTON in 1 )") & liquid_num != "" & liquid_mult == ""
 	
@@ -105,6 +138,6 @@ use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
 	gen cart_aero = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CANISTER in 1 CARTON)")
 
 * one typo: 
-	gen patch_typo = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= PATCH in 1)")
+	gen patch_typo = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= PATCH in 1 PATCH)")
 
 
