@@ -24,6 +24,10 @@ use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
 	drop if _merge ==2 
 	drop _merge 
 	
+	// DELETE below LATER
+	keep packagedescription 
+	//DELETE above LATER
+	
 	duplicates drop packagedescription, force // drops almost nothing.
 	drop if packagedescription == ""
 	gen matched = 0 
@@ -64,38 +68,70 @@ use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
 	replace unit_quantity = capblis_num*capblis_bottle if capblis_num != . & capblis_bottle != . & matched == 0
 	replace matched = 1 if capblis_num != . & capblis_bottle != . & matched == 0
 	
-
-	* TODO - start from here... is liquid_mult below necessary?  Not clear.
+	* granules 
+	gen num_granules = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= GRANULE)")
+	destring num_granules, replace 
+	
+	replace unit_quantity = num_granules if num_granules != . & matched == 0
+	replace matched = 1 if num_granules != . & matched == 0
 
 		
+gen liquid_quantity = .
 * decent number are liquid 
 	* TODO - this is a hard one: 6 CARTON in 1 CASE (0406-8003-12)  &gt; 1 BOTTLE, PLASTIC in 1 CARTON &gt; 120 mL in 1 BOTTLE, PLASTIC
 
 	gen liquid_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 BOTTLE)")
 	destring liquid_num, replace
 	
-	gen liquid_mult = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= BOTTLE in 1 )")
-	replace liquid_mult = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CARTON in 1 )") & liquid_num != "" & liquid_mult == ""
+	gen liquid_mult = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= (BOTTLE|CARTON) in 1 )")
+	destring liquid_mult, replace 
+	
+	replace liquid_quantity = liquid_num if liquid_num != . & liquid_mult == . & matched == 0
+	replace matched = 1 if liquid_num != . & liquid_mult == . & matched == 0
+	
+	replace liquid_quantity = liquid_num*liquid_mult if liquid_num != . & liquid_mult != . & matched == 0
+	replace matched = 1 if liquid_num != . & liquid_mult != . & matched == 0
 	
 * good number of vials:
-
-	gen vial_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 VIAL, SINGLE-DOSE)")
-		* TODO - this doesn't work yet.  try spaces???
-	gen many_vials = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= VIAL)(.+)(?= TRAY)")
+		* note \d*\.?\d* matches decimal numbers, inc. .5, 0.5, 5, e.g.
+	gen vial_num = ustrregexs(1) if ustrregexm(packagedescription, "(\d*\.?\d*)(?= mL in 1 VIAL)")
+	destring vial_num, replace
 	
-		* number of vials: number before VIAL not preceded by mL
-	gen num_vial_int = ustrregexs(1) if ustrregexm(packagedescription, "(?<!mL)(\d+ VIAL)")
-	gen num_vials = ustrregexs(1) if ustrregexm(num_vial_int, "(\d+)")
-	drop num_vial_int 
+	gen many_vials = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= VIAL)(.+)(?= (TRAY|CARTON))")
+	replace many_vials = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= VIAL)(.+)(|= in 1 POUCH)") & many_vials == "" & matched == 0 // handles a special case.
+	destring many_vials, replace 
+	
+
+	gen pouch_vials = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= POUCH in 1 CARTON)") & matched == 0 // another part of the special case.
+	destring pouch_vials, replace
+	
+	replace liquid_quantity = vial_num if vial_num != . & many_vials == . & pouch_vials == . & matched == 0
+	replace matched = 1 if vial_num != . & many_vials == . & pouch_vials == . & matched == 0
+	
+	replace liquid_quantity = vial_num*many_vials if vial_num != . & many_vials != . & pouch_vials == . & matched == 0
+	replace matched = 1 if vial_num != . & many_vials != . &  pouch_vials == . & matched == 0
+	
+	replace liquid_quantity = vial_num*many_vials*pouch_vials if vial_num != . & many_vials != . &  pouch_vials != . & matched == 0
+	replace matched = 1 if vial_num != . & many_vials != . &  pouch_vials != . & matched == 0
 	
 * tray in case, cup in tray, ml in cup
-	gen cup_dose = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 CUP)")
+	gen cup_dose = ustrregexs(1) if ustrregexm(packagedescription, "(\d*\.?\d*)(?= mL in 1 CUP)") //decimal
+	destring cup_dose, replace
+	
 	gen num_cups = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CUP, UNIT-DOSE)")
+	destring num_cups, replace 
+	
 		* two categories, one doesn't have the next line
 	gen num_tray = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= TRAY in 1)")
+	destring num_tray, replace 
 	
-* granules 
-	gen num_granules = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= GRANULE)")
+	replace liquid_quantity = cup_dose*num_cups if cup_dose != . & num_cups != . & num_tray == . & matched == 0
+	replace matched = 1 if cup_dose != . & num_cups != . & num_tray == . & matched == 0
+	
+	replace liquid_quantity = cup_dose*num_cups*num_tray if cup_dose != . & num_cups != . & num_tray != . & matched == 0
+	replace matched = 1 if cup_dose != . & num_cups != . & num_tray != . & matched == 0
+	
+
 	
 * cartridges
 	gen cart_quant = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 (AMPULE|CARTRIDGE))")
