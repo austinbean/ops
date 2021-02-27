@@ -24,11 +24,6 @@ use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
 	drop if _merge ==2 
 	drop _merge 
 	
-	// DELETE below LATER
-	keep packagedescription 
-	//DELETE above LATER
-	
-	duplicates drop packagedescription, force // drops almost nothing.
 	drop if packagedescription == ""
 	gen matched = 0 
 	gen unit_quantity = .
@@ -74,6 +69,47 @@ use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
 	
 	replace unit_quantity = num_granules if num_granules != . & matched == 0
 	replace matched = 1 if num_granules != . & matched == 0
+
+	* film in pouch nearly doable with previous: 
+	gen films = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= FILM)(.+)(?= POUCH)")
+	destring films, replace
+	
+	gen film_p = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= POUCH in 1)")
+	destring film_p, replace
+	
+	replace unit_quantity = films*film_p if films != . & film_p != . & matched == 0
+	replace matched = 1 if films != . & film_p != . & matched == 0
+	
+	
+* suppository (in box and in packet)
+
+	gen supp = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= SUPPOSITORY in 1 BOX)")
+	destring supp, replace
+	
+	gen supp_pac = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= SUPPOSITORY in 1)(.+)(?= (PACKET|BLISTER PACK))")
+	destring supp_pac, replace 
+	
+	gen pac_box = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= (BLISTER PACK|PACKET) in 1 (BOX|CARTON))")
+	destring pac_box, replace 
+	
+	replace unit_quantity = supp if supp!=. & supp_pac == . & pac_box == . & matched == 0
+	replace matched = 1 if supp!=. & supp_pac == . & pac_box == . & matched == 0
+	
+	replace unit_quantity = supp_pac*pac_box if supp == . & supp_pac != . & pac_box != . & matched == 0
+	replace matched = 1 if supp == . & supp_pac != . & pac_box != . & matched == 0
+	
+	
+
+* lozenge in container:
+	gen loz_cont = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= LOZENGE in 1 (BLISTER PACK|CONTAINER))")
+	destring loz_cont, replace 
+	
+	gen cont_cart = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= (CONTAINER|BLISTER PACK) in 1)")
+	destring cont_cart, replace 
+	
+	replace unit_quantity = loz_cont*cont_cart if loz_cont != . & cont_cart !=. & matched == 0
+	replace matched = 1 if loz_cont != . & cont_cart !=. & matched == 0
+	
 
 		
 gen liquid_quantity = .
@@ -131,49 +167,102 @@ gen liquid_quantity = .
 	replace liquid_quantity = cup_dose*num_cups*num_tray if cup_dose != . & num_cups != . & num_tray != . & matched == 0
 	replace matched = 1 if cup_dose != . & num_cups != . & num_tray != . & matched == 0
 	
-
-	
 * cartridges
 	gen cart_quant = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 (AMPULE|CARTRIDGE))")
+	destring cart_quant, replace
+	
 	gen quant_amp = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= (AMPULE|CARTRIDGE) in 1)")
-
+	destring quant_amp, replace 
+	
+	replace liquid_quantity = cart_quant if cart_quant != . & quant_amp == . & matched == 0
+	replace matched = 1 if cart_quant != . & quant_amp == . & matched == 0
+	
+	replace liquid_quantity = cart_quant*quant_amp if cart_quant != . & quant_amp != . & matched == 0
+	replace matched = 1 if cart_quant != . & quant_amp != . & matched == 0
+	
+	gen hours = .
+	
+	
+* grams in tubes in cartons, syringes in boxes 
+	gen tube_gram = ustrregexs(1) if ustrregexm(packagedescription, "(\d*\.?\d*)(?= (g|mL) in 1 (TUBE|SYRINGE))")
+	destring tube_gram, replace 
+	
+	gen tube_cart = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= (TUBE|SYRINGE) in 1)")
+	destring tube_cart, replace 
+	
+	replace liquid_quantity = tube_gram*tube_cart if ustrregexm(packagedescription, "SYRINGE") & tube_gram != . & tube_cart != . & matched == 0
+	replace matched = 1 if ustrregexm(packagedescription, "SYRINGE") & tube_gram != . & tube_cart != . & matched == 0
+	
+	replace liquid_quantity = tube_gram*tube_cart if tube_gram!= . & tube_cart!=. & matched == 0
+	replace matched = 1 if tube_gram!= . & tube_cart!=. & matched == 0
+		
+	
 	
 * pouch in carton, patch in pouch, hours in patch 
 	gen patch_dose = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= h in 1 PATCH)") // always 72
+	destring patch_dose, replace 
+	// every patch has "one patch in one pouch"
 	gen pouch_cart = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= POUCH in 1)")
-
-* film in pouch nearly doable with previous: 
-	gen films = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= FILM)(.+)(?= POUCH)")
-
-* sprays
-	gen spray = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= SPRAY)(.+)(?= in 1)")
-
-* suppository (in box and in packet)
-
-	gen supp = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= SUPPOSITORY in 1 BOX)")
-	gen supp_pac = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= SUPPOSITORY in 1 PAC)")
-	gen pac_box = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= PACKET in 1 (BOX|CARTON))")
+	destring pouch_cart, replace
 	
-* grams in tubes in cartons, syringes in boxes 
-	gen tube_gram = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= (g|mL) in 1 (TUBE|SYRINGE))")
-	gen tube_cart = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= (TUBE|SYRINGE) in 1)")
+	replace hours = patch_dose if patch_dose != . & pouch_cart == . & matched == 0
+	replace matched = 1 if patch_dose != . & pouch_cart == . & matched == 0
+	
+	replace hours = patch_dose*pouch_cart if patch_dose != . & pouch_cart != . & matched == 0
+	replace matched = 1 if patch_dose != . & pouch_cart != . & matched == 0
+		
 
-* lozenge in container:
-	gen loz_cont = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= LOZENGE in 1)")
-	gen cont_cart = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CONTAINER in 1)")
+gen gas = 0 
+* aerosol in canister:
+	gen aero_cont = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= AEROSOL, METERED)")
+	destring aero_cont, replace 
+	replace gas = aero_cont if aero_cont != . & matched == 0
+	replace matched = 1 if aero_cont != . & matched == 0
+	
+* sprays
+	* TODO there are two kinds of sprays - one measured in sprays, other in mL 
+	gen spray_ml = ustrregexs(1) if ustrregexm(packagedescription,"(\d+)(?= SPRAY)")
+	destring spray_ml, replace 
+	replace gas = spray_ml if spray_ml != . & matched == 0
+	replace matched = 1 if spray_ml != . & matched == 0
+	
+	gen spray_bo = ustrregexs(1) if ustrregexm(packagedescription,"(\d*\.?\d*)(?= SPRAY)")
+	destring spray_bo, replace 
+	replace liquid_quantity = spray_bo if spray_bo != . & matched == 0
+	replace matched = 1 if spray_bo != . & matched == 0
 
+	* ONE EACH 
+	
 * mL in bag:
 	gen bag_cont = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= mL in 1 BAG)")
+	destring bag_cont, replace
+	
 	gen cart_bag = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= BAG in 1)")
+	destring cart_bag, replace 
+	
+	replace liquid_quantity = cart_bag*bag_cont if bag_cont != . & cart_bag != . & matched == 0
+	replace matched = 1 if bag_cont != . & cart_bag != . & matched == 0
 	
 * grams in glass bottles
 	gen glass_bottle = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= g in 1 BOTTLE,)")
-
-* aerosol in canister:
-	gen aero_cont = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= AEROSOL)(.+)(?= in 1 CANISTER)")
-	gen cart_aero = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= CANISTER in 1 CARTON)")
-
+	destring glass_bottle, replace 
+	
+	replace liquid_quantity = glass_bottle if glass_bottle != . & matched == 0
+	replace matched = 1 if glass_bottle != . & matched == 0
+	
+* kit in blister pack in carton 
+	// can't obviously do anything with "one kit" ?
+	gen kit_c = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= KIT in 1 BLISTER PACK)")
+	gen kit_co = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= BLISTER PACK in 1 CARTON)(.+)(?= KIT in 1 BLISTER PACK)") 
+	destring kit_co, replace 
+	replace unit_quantity = kit_co if kit_c != "" & matched == 0
+	
 * one typo: 
+	// can't do anything with this one  
 	gen patch_typo = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= PATCH in 1 PATCH)")
+	destring patch_typo, replace 
+	* no quantity exists for this one, so can't do more.  
+	
+keep ndccode querycode ndc_code packagedescription gas liquid_quantity unit_quantity
 
 
