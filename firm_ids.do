@@ -122,15 +122,19 @@ gen firmid = ""
     replace firmid = "63629" if ndccode == "63629"
  
 * Chain Drug Consortium
-    replace firmid = 68016 if ndccode == 68016
+	// looks independent
+    replace firmid = "68016" if ndccode == "68016"
  
 * Chain Drug Marketing Association
-    replace firmid = 63868 if ndccode == 63868
+	// independent supplier to smaller pharmacies
+    replace firmid = "63868" if ndccode == "63868"
  
 * Cosette Pharmaceuticals
-    replace firmid = 0713 if ndccode == 0713
+	// independent 
+    replace firmid = "0713" if ndccode == "0713"
  
 * Dispensing Solutions
+	// information difficult to find?  might be owned by mckesson but that is not clear.  
     replace firmid = 55045 if ndccode == 55045
  
 * E Fougera &amp; Co a division of Fougera Pharmaceuticals
