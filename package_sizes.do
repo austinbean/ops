@@ -212,7 +212,7 @@ gen liquid_quantity = .
 	replace matched = 1 if patch_dose != . & pouch_cart != . & matched == 0
 		
 
-gen gas = 0 
+gen gas = .
 * aerosol in canister:
 	gen aero_cont = ustrregexs(1) if ustrregexm(packagedescription, "(\d+)(?= AEROSOL, METERED)")
 	destring aero_cont, replace 
@@ -230,6 +230,8 @@ gen gas = 0
 	destring spray_bo, replace 
 	replace liquid_quantity = spray_bo if spray_bo != . & matched == 0
 	replace matched = 1 if spray_bo != . & matched == 0
+	
+rename gas gas_quantity
 
 	* ONE EACH 
 	
@@ -263,6 +265,11 @@ gen gas = 0
 	destring patch_typo, replace 
 	* no quantity exists for this one, so can't do more.  
 	
-keep ndccode querycode ndc_code packagedescription gas liquid_quantity unit_quantity
+	
+keep ndccode querycode ndc_code packagedescription gas_quantity liquid_quantity unit_quantity
+drop if ndc_code == . 
+duplicates drop ndc_code, force 
+
+save "${op_fp}units_quantity.dta", replace
 
 
