@@ -4,8 +4,14 @@
 		* another option: every privately insured person above a certain age is a potential taker in this market.
 	* Here do the market shares as national-years.
 		
-		* HIPAA space API Key:  90B0031BCED14BCD880C273DA32F744D504F2C45687A41AF9B9629FB790718A7
+/*
+takes inputs from 
+units_measurement.do
+package_sizes.do 
+mme_list.do 
 
+*/
+		
 local whereami = "austinbean"
 global demo_filep = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/census_demographic_files/"
 global op_fp = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
@@ -66,100 +72,6 @@ replace pres_count_rand = pres_count if pres_count != .
 
 gen cop2 = avg_copay 
 
-
- *********************** TO GENERATE NATIONAL MARKET SHARES **********************************
-if 0{ // skip when not doing national shares.  
-
-	* Using collapse - watch out the weights apply to ALL statistics, not just the one closest.  
-
-	preserve 	
-		collapse (sum) nat_pres_low=tot_pres_low nat_pres_high=tot_pres_high nat_pres_rand=pres_count_rand nat_pats_low=tot_pat_low  nat_pats_high=tot_pat_high nat_pats_rand=pat_count_rand, by(ndc_code yr) // JUST sums - weights apply to all stats.  	
-		save "${hcci_located}national_tmp1.dta", replace
-	restore 
-
-	preserve 
-		collapse (mean) copay_low=avg_copay deduct_low=avg_deduct [fw=tot_pres_low], by(ndc_code yr)
-		save "${hcci_located}national_tmp2.dta", replace
-	restore 
-
-	preserve 
-		collapse (mean) copay_high=avg_copay deduct_high=avg_deduct [fw=tot_pres_high], by(ndc_code yr)
-		save "${hcci_located}national_tmp3.dta", replace
-	restore 
-
-
-	* Generate national market shares - market will be nation/year.
-	preserve 
-		collapse (sum) nat_total_pres_low=tot_pres_low  nat_total_pres_high=tot_pres_high nat_total_pres_rand=pres_count_rand nat_total_pats_low=tot_pat_low nat_total_pats_high=tot_pat_high nat_total_pats_rand=pat_count_rand, by(yr)
-		save "${hcci_located}national_tmp4.dta", replace
-	restore 
-
-
-		use "${hcci_located}national_tmp1.dta", clear
-		merge 1:1 ndc_code yr using "${hcci_located}national_tmp2.dta", nogen 
-		merge 1:1 ndc_code yr using "${hcci_located}national_tmp3.dta", nogen 
-		merge m:1 yr using "${hcci_located}national_tmp4.dta", nogen 
-		
-
-				* 75 %ile and above gets 150 products in this year.  Probably that's where to start.  
-				* collapse the bottom 75% of products into one "OTHER" category.
-		levelsof yr, local(all_yr)
-		gen p75 = 0 
-		foreach nm of local all_yr{
-			summarize nat_pats_low, d 
-			replace p75 = 1 if nat_pats_low < `r(p75)' & yr == `nm'
-		}
-	preserve 
-		keep if p75 == 0
-		drop p75 
-		save "${hcci_located}national_inside_goods.dta"	
-	restore 
-		
-		* keep, collapse, etc - that is, create the <75th %ile product out of these 
-		keep if p75 == 1
-	preserve 
-		keep ndc_code yr nat_pres_low nat_pats_low copay_low deduct_low nat_total_pres_low nat_total_pats_low
-		collapse (sum) nat_pres_low nat_pats_low  (firstnm) ndc_code, by(yr)
-		replace ndc_code = "00000000000"
-		save "${hcci_located}national_tmp5.dta", replace 
-	restore 
-
-	preserve 
-		keep ndc_code yr nat_pres_low nat_pats_low copay_low deduct_low nat_total_pres_low nat_total_pats_low
-		collapse (mean) copay_low deduct_low (firstnm) ndc_code [fw=nat_pres_low] ,by(yr) 
-		replace ndc_code = "00000000000"
-		save "${hcci_located}national_tmp6.dta", replace 
-
-	restore
-		
-	preserve 
-		keep ndc_code yr nat_pres_high nat_pats_high copay_high deduct_high nat_total_pres_high nat_total_pats_high
-		collapse (sum) nat_pres_high nat_pats_high  (firstnm) ndc_code, by(yr)
-		replace ndc_code = "00000000000"
-		save "${hcci_located}national_tmp7.dta", replace
-	restore 
-		
-	preserve 
-		keep ndc_code yr nat_pres_high nat_pats_high copay_high deduct_high nat_total_pres_high nat_total_pats_high
-		collapse (mean) copay_high deduct_high (firstnm) ndc_code [fw=nat_pres_high] ,by(yr) 
-		replace ndc_code = "00000000000"
-		save "${hcci_located}national_tmp8.dta", replace
-	restore 
-
-		use "${hcci_located}national_tmp5.dta", clear
-		merge 1:1 ndc_code yr using "${hcci_located}national_tmp6.dta", nogen 
-		merge 1:1 ndc_code yr using "${hcci_located}national_tmp7.dta", nogen 
-		merge 1:1 ndc_code yr using "${hcci_located}national_tmp8.dta", nogen 
-		save "${hcci_located}national_composite_inside_good.dta", replace 
-
-		clear 
-		use "${hcci_located}national_inside_goods.dta"
-		append using "${hcci_located}national_composite_inside_good.dta"
-
-		save "${hcci_located}national_shares.dta", replace
-}
-******************************** END NATIONAL MARKET SHARES *********************************
-	
 	
 * per-state composite inside good, below 75%-ile.
 
@@ -223,57 +135,31 @@ restore
 	with just this information, I can duplicate
 	- active ingredients
 	- dea schedule
-	- route of administration 
-	
-	... still really want the MME  
-	*/
-	
-		/*
-	https://www.cdc.gov/drugoverdose/pdf/calculating_total_daily_dose-a.pdf
-	OPIOID (doses in mg/day except where noted) CONVERSION FACTOR
-Codeine 0.15
-Fentanyl transdermal (in mcg/hr) 2.4
-Hydrocodone 1
-Hydromorphone 4
-Methadone
-1-20 mg/day 4
-21-40 mg/day 8
-41-60 mg/day 10
-≥ 61-80 mg/day 12
-Morphine 1
-Oxycodone 1.5
-Oxymorphone 3 
+	- route of administration 	
 	*/
 	
 	
-	split substancename, p(";")
-	split strengthunit, p(";")
-	split strengthnumber, p(";")
+* Conversion from various units of measurement to common mg/l, as much as possible.
 
-	rename substancename xsubsname
-	rename strengthnumber xstrengthnum
-	rename strengthunit xstrengthu 
+	merge m:1 ndc_code using "${op_fp}units_measurement.dta"
+	drop _merge 
 	
-	reshape long substancename strengthunit strengthnumber, i(ndc_code) j(sbctr)
-	drop if substancename == ""
-	* TODO - can also think about identifying painkillers this way to get market share right.  
-		* MME 
-	gen codeine = regexm(lower(substancename), "codeine")
-	gen fentanyl = regexm(lower(substancename), "fentanyl")
-	gen hydrocodone = regexm(lower(substancename), "hydrocodone")
-	gen hydromorphone = regexm(lower(substancename), "hydromorphone")
-	gen methadone = regexm(lower(substancename), "methadone")
-	gen morphine = regexm(lower(substancename), "morphine")
-	gen oxycodone = regexm(lower(substancename), "oxycodone")
-	gen oxymorphone = regexm(lower(substancename), "oxymorphone")
 	
-	* morphine sulfate 
-	
-	* redo after reshape.  
-	egen non_zero_mme = rowtotal(codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone)
+* Package sizes (e.g., number of pills, mL  )
 
-	*
-	gen MME = 0 if non_zero_mme == 0
+	merge m:1 ndc_code using "${op_fp}units_quantity.dta"
+	replace gas_quantity = 0 if ndc_code == "00000000000"
+	replace liquid_quantity = 0 if ndc_code == "00000000000"
+	replace unit_quantity = 0 if ndc_code == "00000000000"
+	drop _merge 
 
-		
+	
+* Add the MME by ingredient.  
+	merge m:1 ndc_code using "${op_fp}per_ndc_mme.dta"
+	local vars1 "codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone tramadol pentazocine opium meperidine butorphanol non_zero_mme mme"
+	foreach vv of local vars1{
+		replace `vv' = 0 if ndc_code == "00000000000" 
+	}
+	drop _merge 
+	
 	
