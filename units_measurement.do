@@ -38,6 +38,8 @@ replace conversion_factor = 1 if strengthunit == "ug/mL" // nothing to convert.
 replace conversion_factor = 0.001 if strengthunit == "ug/1"
 
 
+duplicates drop ndc_code, force 
+
 save "${op_fp}units_measurement.dta", replace
 
 /*
