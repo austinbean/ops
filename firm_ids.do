@@ -135,7 +135,7 @@ gen firmid = ""
  
 * Dispensing Solutions
 	// information difficult to find?  might be owned by mckesson but that is not clear.  
-    replace firmid = 55045 if ndccode == 55045
+    replace firmid = "55045" if ndccode == "55045"
  
 * E Fougera &amp; Co a division of Fougera Pharmaceuticals
     replace firmid = 0168 if ndccode == 0168
