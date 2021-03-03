@@ -80,7 +80,7 @@ https://www.cdc.gov/drugoverdose/data-files/CDC_Oral_Morphine_Milligram_Equivale
 */	
 	
 	use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
-	merge 1:1 ndc_code using "${op_pr}mme_by_ndc.dta"
+	// merge 1:1 ndc_code using "${op_pr}mme_by_ndc.dta"
 	// todo this has a mistake b/c now a bunch of non-opioids will get MME's  
 	split substancename, p(";")
 	split strengthunit, p(";")
@@ -97,7 +97,7 @@ https://www.cdc.gov/drugoverdose/data-files/CDC_Oral_Morphine_Milligram_Equivale
 		
 	replace substancename = strtrim(substancename)   // a few codeine entries have a leading space. 
 	replace strengthnumber = strtrim(strengthnumber) // more spaces
-	replace strengthuni = strtrim(strengthunit)      // also
+	replace strengthunit = strtrim(strengthunit)      // also
 	
 	duplicates drop substancename strengthunit strengthnumber , force
 	sort substancename strengthunit strengthnumber
@@ -113,7 +113,11 @@ https://www.cdc.gov/drugoverdose/data-files/CDC_Oral_Morphine_Milligram_Equivale
 	gen oxycodone = regexm(lower(substancename), "oxycodone")
 	gen oxymorphone = regexm(lower(substancename), "oxymorphone")
 	gen tramadol = regexm(lower(substancename), "tramadol")
-	egen non_zero_mme = rowtotal(codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone)
+	gen pentazocine = regexm(lower(substancename), "pentazocine")
+	gen opium = regexm(lower(substancename), " opium")
+	gen meperidine = regexm(lower(substancename), "meperidine")
+	gen butorphanol = regexm(lower(substancename), "butorphanol")
+	egen non_zero_mme = rowtotal(codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone tramadol pentazocine opium meperidine butorphanol)
 		* note: no drug in the data has two opioids from this list among its ingredients.  
 	
 	preserve 
@@ -271,3 +275,54 @@ replace mme = 30 if substancename ==  "OPIUM" & strengthunit ==  "mg/1" & streng
 	* pentazocine
 replace mme = 18.5 if substancename == "PENTAZOCINE HYDROCHLORIDE" & strengthunit == "mg/1" & strengthnumber == "50"
 	
+save "${op_fp}mme_crosswalk.dta", replace
+
+
+
+* ADD back the above:
+	 
+
+
+	use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
+
+	split substancename, p(";")
+	split strengthunit, p(";")
+	split strengthnumber, p(";")
+
+	rename substancename xsubsname
+	rename strengthnumber xstrengthnum
+	rename strengthunit xstrengthu 
+	
+	reshape long substancename strengthunit strengthnumber, i(ndc_code) j(sbctr)
+	drop if substancename == ""
+	
+		
+	replace substancename = strtrim(substancename)   // a few codeine entries have a leading space. 
+	replace strengthnumber = strtrim(strengthnumber) // more spaces
+	replace strengthunit = strtrim(strengthunit)      // also
+	
+
+	keep ndc_code ndccode sbctr ndc11code productndc xsubsname xstrengthnum xstrengthu substancename strengthunit strengthnumber
+	merge m:1 substancename strengthunit strengthnumber using "${op_fp}mme_crosswalk.dta"
+	drop _merge 
+	
+	local vars1 "codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone tramadol pentazocine opium meperidine butorphanol non_zero_mme mme"
+	
+	foreach v of local vars1{
+		
+		replace `v' = 0 if `v' == .
+		rename `v' `v'_
+	}
+	
+	drop substancename strengthunit strengthnumber
+	sort ndc_code sbctr 
+	reshape wide codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone tramadol pentazocine opium meperidine butorphanol non_zero_mme mme , i(ndc_code) j(sbctr)
+	
+	foreach v of local vars1 {
+		di "`v'"
+		egen some_`v' = rowtotal(`v'_*)
+		drop `v'_* 
+		rename some_`v' `v'
+	}
+	
+	save "${op_fp}per_ndc_mme.dta", replace 
