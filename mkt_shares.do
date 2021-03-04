@@ -2,7 +2,10 @@
 	* see also pop_markets.do 
 		* per pop_markets, reasonable to assume 10% of the population takes opioids.  What about broader painkillers
 		* another option: every privately insured person above a certain age is a potential taker in this market.
-	* Here do the market shares as national-years.
+	* TODO: use package size information to get better shares, esp. for pills. 
+	* TODO: better shares for patches / liquids.  
+		* Stick to tablets exclusively for now, do patches/liquids later if possible.
+		* non-tablets dropped after units_quantity.dta merged.  
 		
 /*
 takes inputs from 
@@ -142,15 +145,25 @@ restore
 * Conversion from various units of measurement to common mg/l, as much as possible.
 
 	merge m:1 ndc_code using "${op_fp}units_measurement.dta"
+	drop if _merge == 2
 	drop _merge 
 	
 	
 * Package sizes (e.g., number of pills, mL  )
 
 	merge m:1 ndc_code using "${op_fp}units_quantity.dta"
-	replace gas_quantity = 0 if ndc_code == "00000000000"
+	
+	keep if  unit_quantity != . | (ndc_code == "00000000000" | ndc_code == "99999999999") // stick to pills and related for now, but keep outside option.
+	
+		* just using pills so these are assigned to the median value (100 tablets)
+	replace gas_quantity = 0 if ndc_code == "00000000000" // composite inside good
 	replace liquid_quantity = 0 if ndc_code == "00000000000"
-	replace unit_quantity = 0 if ndc_code == "00000000000"
+	replace unit_quantity = 100 if ndc_code == "00000000000"
+	
+	replace gas_quantity = 0 if ndc_code == "99999999999" // outside good
+	replace liquid_quantity = 0 if ndc_code == "99999999999"
+	replace unit_quantity = 100 if ndc_code == "99999999999"
+	drop if _merge == 2
 	drop _merge 
 
 	
@@ -158,8 +171,45 @@ restore
 	merge m:1 ndc_code using "${op_fp}per_ndc_mme.dta"
 	local vars1 "codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone tramadol pentazocine opium meperidine butorphanol non_zero_mme mme"
 	foreach vv of local vars1{
-		replace `vv' = 0 if ndc_code == "00000000000" 
+		replace `vv' = 0 if ndc_code == "00000000000" // composite inside good
+		replace `vv' = 0 if ndc_code == "99999999999" // outside good 
 	}
+	drop if _merge == 2
 	drop _merge 
 	
 	
+* how should liquid quantity be translated into tablet?  
+		* TODO - this needs to be done in units_measurement.do 
+
+	
+* Now for better market shares, especially of tablets. 
+	* total tablets sold...
+	
+	gen total_tablets = unit_quantity*tot_pres_high 
+	
+* state-year market shares
+
+	bysort state yr: egen styrtot = sum(total_tablets)
+	gen market_share = total_tablets/styrtot 
+	
+* some package size variables:
+	gen small_package = 1 if unit_quantity <= 30
+	gen medium_package = 1 if unit_quantity > 30 & unit_quantity <= 120
+	gen large_package = 1 if unit_quantity > 120 & unit_quantity != . // it's never missing.  
+
+* market share outputs:
+	preserve 
+		keep state yr ndc_code market_share 
+		export delimited using "/Users/austinbean/Desktop/programs/opioids/state_year_shares.csv", replace
+	restore 
+	
+* features needed: state, year, ndc_code, price (avg copay), mme
+	* package size?  
+* product feature outputs:
+	* some opioids are not available in pills: fentanyl oxymorphone meperidine butorphanol 
+	* one product is available in a single pill: pentazocine
+	preserve 
+		duplicates drop ndc_code, force 
+		keep yr ndc_code mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine small_package medium_package large_package 
+		export delimited using "/Users/austinbean/Desktop/programs/opioids/products_characteristics.csv", replace
+	restore 
