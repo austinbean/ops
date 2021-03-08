@@ -773,83 +773,23 @@ end
 Doesn't do anything but import and return the market share and product characteristic data.
 Returns both the original data set and a subset called wanted_data w/ just the columns of interest. 
 - Takes a set of arguments MKT... which are column indices  
-# TODO here - split these up more effectively into markets, however divided.  
-
+- Slightly awful, but returns a vector: (state, year, [ndc_code, market_share]), 
+- Can iterate over state-year combinations like that.  
+-  
 ## TEST ##
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
+yr1 = [2009, 2010, 2011, 2012, 2013]
+MarketShares(st1, yr1)
 
-shares = MarketShares([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :market_shares)
-
-
-1 yr
-2 ndc_code
-3 nat_pres_low
-4 nat_pres_high
-5 nat_pres_rand
-6 nat_pats_low
-7 nat_pats_high
-8 nat_pats_rand
-9 copay_low
-10 deduct_low
-11 copay_high
-12 deduct_high
-13 nat_total_pres_low
-14 nat_total_pres_high
-15 nat_total_pres_rand
-16 nat_total_pats_low
-17 nat_total_pats_high
-18 nat_total_pats_rand
-19 p75
-20 ndccode
-21 packagedescription
-22 ndc11code
-23 productndc
-24 producttypename
-25 proprietaryname
-26 proprietarynamesuffix
-27 nonproprietaryname
-28 dosageformname
-29 routename
-30 startmarketingdate
-31 endmarketingdate
-32 marketingcategoryname
-33 applicationnumber
-34 labelername
-35 substancename
-36 strengthnumber
-37 strengthunit
-38 pharm_classes
-39 deaschedule
-40 status
-41 lastupdate
-42 packagendcexcludeflag
-43 productndcexcludeflag
-44 listingrecordcertifiedthrough
-45 startmarketingdatepackage
-46 endmarketingdatepackage
-47 samplepackage
-48 querycode
-49 supplementary_querycode
-50 DEA2
-51 ORAL
-52 simple_fent
-53 simple_oxy
-54 simple_hydro
-55 _merge
-56 outside_patients
-57 outside_presc
-58 market_shares
-59 dd
 """
-function MarketShares(mkt_vars::Array, MKT...) # take a variable identifying the market here
-    mkts = unique(mkt_vars)
-    out1 = Array{Array{Real,2}, 1}()
-    market_shares = CSV.read("./national_shares.csv")
-    wanted_shares = market_shares[!, [MKT...]]
-    # this assumes the market var is in the first column
-    for el in mkts 
-        push!(out1, convert(Array{Real,2}, wanted_shares[ (wanted_shares[:,1].==el), :]))
-    end     
-    return out1 
+function MarketShares(MKT...) # take a variable identifying the market here
+    inp_shares = CSV.read("./state_year_shares.csv") |> DataFrame 
+    market_shares = Array{ Tuple{ String, Int64 ,Array{Union{String,Real},2} } , 1}()
+    for el in Iterators.product(MKT...)
+        tm1 = convert(Array{Union{String,Real},2}, inp_shares[ (inp_shares[:state].==el[1]).&(inp_shares[:yr].==el[2]) , [:ndc_code, :market_share]])
+        push!(market_shares, (el[1], el[2], tm1))
+    end 
+    return market_shares 
 end 
 
 """
@@ -859,186 +799,39 @@ Takes a set `Characteristics` of column indexes in the file and returns the char
 TODO - make sure all future continuous variables are normalized.
 TODO - need variables to split the market up 
 ## TEST ### 
-
+using CSV 
 charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
+
+Looks like... 
+charcs[1]
+169×8 Array{Real,2}:
+ 2009    186504082   3.09784    0  0  0  0  1
+ 2009    186504031   1.4051     0  0  0  0  1
+ 2009    186502082   3.09937    0  0  0  0  1
+
+a1 = CSV.read("./products_characteristics.csv")
+# TODO - would like this to export.... vector where first two columns are 
+state/year then ndc then share  
+The question is how it handles two kinds of mkt_vars, basically.  
 """
-function ProductChars(mkt_vars::Array, Characteristics...)
-    mkts = unique(mkt_vars)
+function ProductChars(MKT...)
     # TODO - need to split into markets in the same way as MarketShares() does it.
-    market_shares = CSV.read("./national_shares.csv")
-    #wanted_characteristics = market_shares[!, [:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL ] ]
-    wanted_characteristics = market_shares[!, [Characteristics...] ]
-        # normalize cts vars.
-    b1 = @view wanted_characteristics[:, 3] # TODO is this a little dumb b/c I could just define NormalizeVar in place?
-    wanted_characteristics[:,3] .= NormalizeVar(b1)
-    outp = Array{Array{Real,2},1}()
-    for el in mkts
-        push!(outp, convert(Array{Real,2}, wanted_characteristics[(wanted_characteristics[:,1].==el) ,:]))
-    end
+    inp_charcs = CSV.read("./products_characteristics.csv")
+    characteristics = Array{ Tuple{ String, Int64 ,Array{Union{String,Real},2} } , 1}()
+    for el in Iterators.product(MKT...)
+        push!(characteristics, (el[1],el[2] , 
+                                inp_charcs[(inp_charcs[:yr].==el[2]), 
+                                [:ndc_code, 
+                                :avg_copay, 
+                                :codeine, 
+                                :hydrocodone, 
+                                :hydromorphone, 
+                                :methadone, 
+                                :morphine, 
+                                :oxycodone, 
+                                :tramadol, :mme, :small_package, :medium_package,:large_package]] ))
+    end 
     return outp 
 end 
 
 
-#=
-characteristics list from ACS:
-
-geo_id
-name
-total_est_pop
-pop_10_14
-pop_15_19
-pop_20_24
-pop_25_29
-pop_30_34
-pop_35_39
-pop_40_44
-pop_45_49
-pop_50_54
-pop_55_59
-pop_60_64
-pop_65_69
-pop_70_74
-pop_75_79
-pop_80_84
-pop_85_plus
-
-male_total_est_pop
-male_10_14
-male_15_19
-male_20_24
-male_25_29
-male_30_34
-male_35_39
-male_40_44
-male_45_49
-male_50_54
-male_55_59
-male_60_64
-male_65_69
-male_70_74
-male_75_79
-male_80_84
-male_85_plus
-
-female_total_est_pop
-female_10_14
-female_15_19
-female_20_24
-female_25_29
-female_30_34
-female_35_39
-female_40_44
-female_45_49
-female_50_54
-female_55_59
-female_60_64
-female_65_69
-female_70_74
-female_75_79
-female_80_84
-female_85_plus
-
-st_cd
-st_abbrev
-
-total_pop
-total_pop_w_disability
-total_pop_w_disability_male
-total_pop_w_disability_female
-
-total_less_than_hs_grad
-total_hs_grad
-total_some_college
-total_bachelors
-total_less_than_9th_grade
-total_only_9_12_grade
-total_aa_degree
-total_ba_degree
-total_grad_degree
-
-all_med_earn_pr_yr_lt_h_grad
-all_med_earn_pr_yr_h_grad
-all_med_earn_pr_yr_sm_coll
-all_med_earn_pr_yr_coll_deg
-all_med_earn_pr_yr_grad_deg
-
-male_less_than_hs_grad
-male_hs_grad
-male_some_college
-male_bachelors
-male_less_than_9th_grade
-male_only_9_12_grade
-male_aa_degree
-male_ba_degree
-male_grad_degree
-
-male_med_earn_pr_yr_lt_h_grad
-male_med_earn_pr_yr_h_grad
-male_med_earn_pr_yr_sm_coll
-male_med_earn_pr_yr_coll_deg
-male_med_earn_pr_yr_grad_deg
-
-female_less_than_hs_grad
-female_hs_grad
-female_some_college
-female_bachelors
-female_less_than_9th_grade
-female_only_9_12_grade
-female_aa_degree
-female_ba_degree
-female_grad_degree
-
-fem_med_earn_pr_yr_lt_h_grad
-fem_med_earn_pr_yr_h_grad
-fem_med_earn_pr_yr_sm_coll
-fem_med_earn_pr_yr_coll_deg
-fem_med_earn_pr_yr_grad_deg
-
-in_lab_for_16_19
-in_lab_for_20_24
-in_lab_for_25_44
-in_lab_for_45_54
-in_lab_for_55_64
-in_lab_for_65_74
-in_lab_for_75_plus
-
-unemp_rate_16_plus
-unemp_rate_16_19
-unemp_rate_20_24
-unemp_rate_25_44
-unemp_rate_45_54
-unemp_rate_55_64
-unemp_rate_65_74
-unemp_rate_75_plus
-
-healthins_white_uninsured
-healthins_lt_hs_grad_uninsured
-healthins_hs_grad_uninsured
-healthins_some_college_uninsured
-healthins_ba_uninsured
-healthins_in_lab_for_uninsured
-healthins_employed_uninsured
-healthins_in_lab_for_unemp_unins
-healthins_not_in_labor_for_unins
-healthins_num_uninsured
-
-hhinc_lt_10000
-hhinc_10_14999
-hhinc_15_24999
-hhinc_25_34999
-hhinc_35_49999
-hhinc_50_74999
-hhinc_75_99999
-hhinc_100_149999
-hhinc_150_199999
-hhinc_gt_200000
-
-hhinc_median_income
-
-race_white
-race_afam
-race_nativeam
-race_asian
-race_pacisland
-race_other
-=#
