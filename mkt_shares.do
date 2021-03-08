@@ -173,10 +173,19 @@ restore
 	foreach vv of local vars1{
 		replace `vv' = 0 if ndc_code == "00000000000" // composite inside good
 		replace `vv' = 0 if ndc_code == "99999999999" // outside good 
+		replace `vv' = 0 if `vv' == .                 // must be 0/1 
 	}
 	drop if _merge == 2
 	drop _merge 
 	
+* Other ingredient:
+gen other = 1
+egen oo = rowtotal(codeine hydrocodone hydromorphone methadone morphine oxycodone tramadol opium)
+replace other = 0 if oo > 0 & oo != .
+	
+	* check 
+egen other_test = rowtotal( other codeine hydrocodone hydromorphone methadone morphine oxycodone tramadol opium)
+	// never exceeds 1, never 0  
 	
 * how should liquid quantity be translated into tablet?  
 		* TODO - this needs to be done in units_measurement.do 
@@ -195,7 +204,11 @@ restore
 * some package size variables:
 	gen small_package = 1 if unit_quantity <= 30
 	gen medium_package = 1 if unit_quantity > 30 & unit_quantity <= 120
-	gen large_package = 1 if unit_quantity > 120 & unit_quantity != . // it's never missing.  
+	gen large_package = 1 if unit_quantity > 120 & unit_quantity != . // it's never missing.
+	
+	foreach v1 of varlist small_package medium_package large_package{
+		replace `v1' = 0 if `v1' == . 
+	}
 
 * market share outputs:
 	preserve 
