@@ -210,11 +210,45 @@ egen other_test = rowtotal( other codeine hydrocodone hydromorphone methadone mo
 		replace `v1' = 0 if `v1' == . 
 	}
 
+
+	* add all ndc's .
+	levelsof state, local(st1)
+	// 	foreach s of local st1{
+	// 		di "_c_`s'_"
+	// 	}
+	levelsof yr, local(yr1)
+	preserve
+		keep ndc_code 
+		duplicates drop ndc_code, force
+		foreach state of local st1{
+			foreach y of local yr1{
+				gen _c_`state'_`y' = 0
+			}
+		}
+	reshape long _c_AK_ _c_AL_ _c_AR_ _c_AZ_ _c_CA_ _c_CO_ _c_CT_ _c_DC_ _c_DE_ _c_FL_ _c_GA_ _c_HI_ _c_IA_ _c_ID_ _c_IL_ _c_IN_ _c_KS_ _c_KY_ _c_LA_ _c_MA_ _c_MD_ _c_ME_ _c_MI_ _c_MN_ _c_MO_ _c_MS_ _c_MT_ _c_NC_ _c_ND_ _c_NE_ _c_NH_ _c_NJ_ _c_NM_ _c_NV_ _c_NY_ _c_OH_ _c_OK_ _c_OR_ _c_PA_ _c_RI_ _c_SC_ _c_SD_ _c_TN_ _c_TX_ _c_UT_ _c_VA_ _c_VT_ _c_WA_ _c_WI_ _c_WV_ _c_WY_, i(ndc_code) j(year)
+	
+	rename _c_*_ c_*
+	
+	reshape long c_, i(ndc_code year) j(state) string
+	replace c_ = 1e-8
+	rename year yr 
+	* save and proceed from here. 
+	save "${op_fp}all_ndc_state_year.dta", replace 
+restore 
+
+
 * market share outputs:
 	preserve 
-		keep state yr ndc_code market_share 
+		keep state yr ndc_code market_share
+		merge 1:1 state yr ndc_code using "${op_fp}all_ndc_state_year.dta"
+		drop _merge 
+		replace market_share = c_ if  _merge == 2 // adding goods w/ zero market share.
+		drop c_ 
+		sort state yr ndc_code 
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/state_year_shares.csv", replace
 	restore 
+	
+	
 	
 * features needed: state, year, ndc_code, price (avg copay), mme
 	* package size?  
