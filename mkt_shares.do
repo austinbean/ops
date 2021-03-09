@@ -95,7 +95,7 @@ preserve
 	keep if p75 == 1 
 	keep state tot_pres_high yr ndc_code
 	collapse (sum) tot_pres_high (firstnm) ndc_code  , by(state yr)
-	replace ndc_code = "00000000000" // keep an NDC for the composite inside good.
+	replace ndc_code = "99999999998" // keep an NDC for the composite inside good.
 	save "${hcci_located}state_yr_composite_inside_count.dta", replace
 restore 
 
@@ -106,7 +106,7 @@ preserve
 	keep if p75 == 1 
 	keep state avg_deduct avg_copay yr ndc_code state_tot_pres_high 
 	collapse (firstnm) ndc_code (mean) avg_deduct avg_copay [fw=state_tot_pres_high] , by(state yr)
-	replace ndc_code = "00000000000"
+	replace ndc_code = "99999999998"
 	save "${hcci_located}state_yr_composite_inside_price.dta", replace
 	merge 1:1 state yr ndc_code using "${hcci_located}state_yr_composite_inside_count.dta"
 	drop _merge 
@@ -122,7 +122,7 @@ restore
 	gen outside_pres = outside_patients*2.25                 // 2.25 prescriptions per outside patient (the mean)
 	replace st_pop_count = st_pop_count + outside_patients   // total patients in state market, including outside option patients
 	replace st_pres_count = st_pres_count + outside_pres     // total number of prescriptions including outside option patients pres. added
-	expand 2 if ndc_code == "00000000000", gen(dd)           // this is the composite inside good
+	expand 2 if ndc_code == "99999999998", gen(dd)           // this is the composite inside good
 	replace ndc_code = "99999999999" if dd == 1              // this is the outside option 
 	replace tot_pres_high = outside_pres if ndc_code == "99999999999"
 	gen market_shares = tot_pres_high/st_pres_count          // these do work out to be 1 across all markets.  
@@ -153,12 +153,12 @@ restore
 
 	merge m:1 ndc_code using "${op_fp}units_quantity.dta"
 	
-	keep if  unit_quantity != . | (ndc_code == "00000000000" | ndc_code == "99999999999") // stick to pills and related for now, but keep outside option.
+	keep if  unit_quantity != . | (ndc_code == "99999999998" | ndc_code == "99999999999") // stick to pills and related for now, but keep outside option.
 	
 		* just using pills so these are assigned to the median value (100 tablets)
-	replace gas_quantity = 0 if ndc_code == "00000000000" // composite inside good
-	replace liquid_quantity = 0 if ndc_code == "00000000000"
-	replace unit_quantity = 100 if ndc_code == "00000000000"
+	replace gas_quantity = 0 if ndc_code == "99999999998" // composite inside good
+	replace liquid_quantity = 0 if ndc_code == "99999999998"
+	replace unit_quantity = 100 if ndc_code == "99999999998"
 	
 	replace gas_quantity = 0 if ndc_code == "99999999999" // outside good
 	replace liquid_quantity = 0 if ndc_code == "99999999999"
@@ -171,7 +171,7 @@ restore
 	merge m:1 ndc_code using "${op_fp}per_ndc_mme.dta"
 	local vars1 "codeine fentanyl hydrocodone hydromorphone methadone morphine oxycodone oxymorphone tramadol pentazocine opium meperidine butorphanol non_zero_mme mme"
 	foreach vv of local vars1{
-		replace `vv' = 0 if ndc_code == "00000000000" // composite inside good
+		replace `vv' = 0 if ndc_code == "99999999998" // composite inside good
 		replace `vv' = 0 if ndc_code == "99999999999" // outside good 
 		replace `vv' = 0 if `vv' == .                 // must be 0/1 
 	}
@@ -217,7 +217,7 @@ egen other_test = rowtotal( other codeine hydrocodone hydromorphone methadone mo
 	// 		di "_c_`s'_"
 	// 	}
 	levelsof yr, local(yr1)
-	preserve
+preserve
 		keep ndc_code 
 		duplicates drop ndc_code, force
 		foreach state of local st1{
@@ -236,13 +236,12 @@ egen other_test = rowtotal( other codeine hydrocodone hydromorphone methadone mo
 	save "${op_fp}all_ndc_state_year.dta", replace 
 restore 
 
-
 * market share outputs:
 	preserve 
 		keep state yr ndc_code market_share
 		merge 1:1 state yr ndc_code using "${op_fp}all_ndc_state_year.dta"
-		drop _merge 
 		replace market_share = c_ if  _merge == 2 // adding goods w/ zero market share.
+		drop _merge 
 		drop c_ 
 		sort state yr ndc_code 
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/state_year_shares.csv", replace
