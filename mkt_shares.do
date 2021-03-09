@@ -162,7 +162,9 @@ restore
 	
 	replace gas_quantity = 0 if ndc_code == "99999999999" // outside good
 	replace liquid_quantity = 0 if ndc_code == "99999999999"
-	replace unit_quantity = 100 if ndc_code == "99999999999"
+	replace unit_quantity = 0 if ndc_code == "99999999999"
+	
+	replace avg_copay = 0 if ndc_code == "99999999999"
 	drop if _merge == 2
 	drop _merge 
 
@@ -256,6 +258,7 @@ restore
 	* one product is available in a single pill: pentazocine
 	preserve 
 		duplicates drop ndc_code, force 
-		keep yr ndc_code mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine small_package medium_package large_package 
+		keep yr ndc_code mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
+		sort ndc_code 
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/products_characteristics.csv", replace
 	restore 
