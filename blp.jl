@@ -775,11 +775,12 @@ Returns both the original data set and a subset called wanted_data w/ just the c
 - Takes a set of arguments MKT... which are column indices  
 - Slightly awful, but returns a vector: (state, year, [ndc_code, market_share]), 
 - Can iterate over state-year combinations like that.  
+- Comes sorted from mkt_shares.do  
 -  
 ## TEST ##
 st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
 yr1 = [2009, 2010, 2011, 2012, 2013]
-MarketShares(st1, yr1)
+a1 = MarketShares(st1, yr1)
 
 """
 function MarketShares(MKT...) # take a variable identifying the market here
@@ -795,32 +796,17 @@ end
 """
 `ProductChars(mkt_vars::Array, Characteristics...)`
 Takes a set `Characteristics` of column indexes in the file and returns the characteristics 
-
+NB: comes sorted out of mkt_shares.do.
 TODO - make sure all future continuous variables are normalized.
 TODO - need variables to split the market up 
 ## TEST ### 
-using CSV 
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL)
 
-Looks like... 
-charcs[1]
-169×8 Array{Real,2}:
- 2009    186504082   3.09784    0  0  0  0  1
- 2009    186504031   1.4051     0  0  0  0  1
- 2009    186502082   3.09937    0  0  0  0  1
+charcs = ProductChars()
 
-a1 = CSV.read("./products_characteristics.csv")
-# TODO - would like this to export.... vector where first two columns are 
-state/year then ndc then share  
-The question is how it handles two kinds of mkt_vars, basically.  
 """
-function ProductChars(MKT...)
-    # TODO - need to split into markets in the same way as MarketShares() does it.
-    inp_charcs = CSV.read("./products_characteristics.csv")
-    characteristics = Array{ Tuple{ String, Int64 ,Array{Union{String,Real},2} } , 1}()
-    for el in Iterators.product(MKT...)
-        push!(characteristics, (el[1],el[2] , 
-                                inp_charcs[(inp_charcs[:yr].==el[2]), 
+function ProductChars()
+    inp_charcs = CSV.read("./products_characteristics.csv") |> DataFrame
+    characteristics = inp_charcs[ :, 
                                 [:ndc_code, 
                                 :avg_copay, 
                                 :codeine, 
@@ -828,10 +814,17 @@ function ProductChars(MKT...)
                                 :hydromorphone, 
                                 :methadone, 
                                 :morphine, 
-                                :oxycodone, 
-                                :tramadol, :mme, :small_package, :medium_package,:large_package]] ))
-    end 
-    return outp 
+                                :oxycodone,
+                                :other, 
+                                :tramadol, 
+                                :mme, 
+                                :small_package, 
+                                :medium_package,
+                                :large_package]] 
+    # normalize cols 2 and 11, copay and mme.
+    characteristics[:,2] =NormalizeVar(characteristics[:,2])
+    characteristics[:,11] = NormalizeVar(characteristics[:,11])    
+    return characteristics 
 end 
 
 
