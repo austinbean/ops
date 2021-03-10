@@ -803,6 +803,21 @@ TODO - need variables to split the market up
 
 charcs = ProductChars()
 
+Columns: 
+["ndc_code", 
+ "avg_copay", 
+ "codeine", 
+ "hydrocodone", 
+ "hydromorphone", 
+ "methadone", 
+ "morphine", 
+ "oxycodone", 
+ "other", 
+ "tramadol", 
+ "mme", 
+ "small_package", 
+ "medium_package", 
+ "large_package"]
 """
 function ProductChars()
     inp_charcs = CSV.read("./products_characteristics.csv") |> DataFrame
@@ -823,8 +838,8 @@ function ProductChars()
                                 :large_package]] 
     # normalize cols 2 and 11, copay and mme.
     characteristics[:,2] =NormalizeVar(characteristics[:,2])
-    characteristics[:,11] = NormalizeVar(characteristics[:,11])    
-    return characteristics 
+    characteristics[:,11] = NormalizeVar(characteristics[:,11])  
+    return convert(Array{Float64,2}, characteristics )
 end 
 
 
