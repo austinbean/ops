@@ -162,7 +162,7 @@ restore
 	
 	replace gas_quantity = 0 if ndc_code == "99999999999" // outside good
 	replace liquid_quantity = 0 if ndc_code == "99999999999"
-	replace unit_quantity = 0 if ndc_code == "99999999999"
+	replace unit_quantity = 100 if ndc_code == "99999999999" // reset this part of outside good to zero later, after creating shares. 
 	
 	replace avg_copay = 0 if ndc_code == "99999999999"
 	drop if _merge == 2
@@ -195,8 +195,11 @@ egen other_test = rowtotal( other codeine hydrocodone hydromorphone methadone mo
 	
 * Now for better market shares, especially of tablets. 
 	* total tablets sold...
-	
+	* TODO - this is going to set some market shares back to zero, only for outside good.  
 	gen total_tablets = unit_quantity*tot_pres_high 
+	
+	replace unit_quantity = 0 if ndc_code == "99999999999" // reset outside good quantity. 
+
 	
 * state-year market shares
 
@@ -211,6 +214,10 @@ egen other_test = rowtotal( other codeine hydrocodone hydromorphone methadone mo
 	foreach v1 of varlist small_package medium_package large_package{
 		replace `v1' = 0 if `v1' == . 
 	}
+	
+	replace small_package = 0 if ndc_code == "99999999999" // reset outside good quantity.
+	replace medium_package = 0 if ndc_code == "99999999999" // reset outside good quantity.
+	replace large_package = 0 if ndc_code == "99999999999" // reset outside good quantity.
 
 
 	* add all ndc's .
