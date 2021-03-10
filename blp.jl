@@ -232,8 +232,10 @@ This will compute the predicted market shares across all of the markets given in
 Operates in-place on mean_utils.  Ordered returned is products × markets in mean_utils.
 
 ## TEST ##
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
+shares = MarketShares(st1, yr1);
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
@@ -276,18 +278,20 @@ This should operate in-place on the vector δ
 
 
 ## TEST ##
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013], :yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
+shares = MarketShares(st1, yr1);
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 cin_shock = shocks[:,:,10];
-mu = zeros(size(shares[1])[1]);
-δ = zeros(size(shares[1])[1]);
-ind_u = zeros(size(shares[1])[1]); 
+mu = zeros(size(shares[1][3],1));
+δ = zeros(size(shares[1][3],1));
+ind_u = zeros(size(shares[1][3],1)); 
 p = zeros(Float64,3);
-PredShare(cinc, cin_shock, params_indices[1],params_indices[2] , δ, charcs[1], mu, ind_u, p)
-@benchmark PredShare(cinc, cin_shock, params_indices[1], δ, charcs[1], mu, ind_u, p)
+PredShare(cinc, cin_shock, params_indices[1],params_indices[2] , δ, charcs, mu, ind_u, p)
+@benchmark PredShare(cinc, cin_shock, params_indices[1],params_indices[2] , δ, charcs, mu, ind_u, p)
 
 
 sum(ind_u) # does sum to nearly one.  
@@ -335,26 +339,31 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 - D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
 
 ## TEST ##
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
+shares =MarketShares(st1, yr1);
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
 cinc = markets[:,:,10];
 cin_shock = shocks[:,:,10];
-utils = zeros(size(shares[1])[1]);
-δ = zeros(size(shares[1])[1]);
-pd = zeros(Float64,3)
-shr = zeros(size(shares[1])[1])
-Util(cinc[:,1], cin_shock[:,1], charcs[1], shr, params_indices[1], params_indices[2] ,utils, pd );
 
-@benchmark Util(cinc[:,1], charcs[1], δ, params_indices[1], utils)
+utils = zeros(size(shares[1][3],1));
+δ = zeros(size(shares[1][3],1));
+pd = zeros(Float64,3)
+shr = zeros(size(shares[1][3],1));
+Util(cinc[:,1], cin_shock[:,1], charcs, shr, params_indices[1], params_indices[2] ,utils, pd );
+
+@benchmark Util(cinc[:,1], cin_shock[:,1], charcs, shr, params_indices[1], params_indices[2] ,utils, pd)
   minimum time:     67.992 μs (0.00% GC)
   median time:      69.050 μs (0.00% GC)
   mean time:        75.198 μs (2.18% GC)
   maximum time:     1.942 ms (94.05% GC)
   
-## Test Across individuals. 
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+## Test Across individuals.
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013]; 
+shares =MarketShares(st1, yr1);
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
 cinc = markets[:,:,10];
 utils = zeros(size(shares[1])[1]);
@@ -397,7 +406,7 @@ function Util(demographics,
     utils .+= δ
     for i = 1:num_prods                                     # NB: multithreading here makes max_time worse by 6x - 8x
         tmp_sum = 0.0                                       # reset the running utility for each person - weirdly faster than adding directly to utils[i]. 
-        for j = 3:num_chars                                 # TODO - this can be redone so that it doesn't require keeping track of this 3.
+        for j = 2:num_chars                                 # TODO - this can be redone so that it doesn't require keeping track of this 3.
             @inbounds tmp_sum += products_char[i,j]*pd[j]   # TODO - 90% of the allocation in this function takes place here.
         end 
         utils[i] += tmp_sum                                 # TODO - the other 10% of the allocation takes place here. 
@@ -446,26 +455,28 @@ This should be:
 - log (s_{.t} (...) ) are log computed market shares. 
 
 ## Test ## 
-
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
+shares = MarketShares(st1, yr1);
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 cinc_shock = shocks[:,:,10];
-market_shares = zeros(size(shares[1])[1], 52);
+market_shares = zeros(size(shares[1][3],1), 52);
 #AllMarketShares(markets, params_indices[1], delta, charcs[1], market_shares)
     # TODO - indexing here will allocate, @view instead. 
-    emp_shr = @view shares[1][:,3] 
+    emp_shr = @view shares[1][3][:,2] 
     pred_shr = @view  market_shares[:,1]
-Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs[1], emp_shr)
+Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs, emp_shr, 4)
 
 
 This allocates a lot and takes a while, b/c it is computing PredShares until convergence.  
 numerically stable version frequently gives NaN, probably due to small mkt shares?   
 
 Timing note: all overhead is due to Utils, via PredShares
-# TODO - needs to take a market identifier and return one.  Easy.   
+# TODO - needs to take a market identifier and return one.  Easy. 
+# TODO - now returns all NaNs pretty rapidly    
 
 """
 function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 100)
@@ -481,7 +492,7 @@ function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Ar
         conv = norm(new_δ.-δ, Inf) 
         two_norm = norm(new_δ.-δ, 2)
         if curr_its%1000 == 0
-            @info "---- Update ----" ID curr_its conv two_norm
+            @info ID curr_its conv two_norm
         end 
         PredShare(mkt,mkt_shock, params, shk_params, new_δ, products, predicted_shares, us, pd)
         # now update the δ
@@ -524,8 +535,10 @@ EG have Contraction return δ and a MKT identifier tuple.  Easy fix.
 
 # Test 
 TODO - here I have the markets as years, but I in mkts I have the markets as states.
-shares = MarketShares([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :market_shares);
-charcs = ProductChars([2009, 2010, 2011, 2012, 2013],:yr, :ndc_code, :copay_high, :simple_fent, :simple_hydro, :simple_oxy, :DEA2, :ORAL);
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
+shares =MarketShares(st1, yr1);
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
@@ -558,7 +571,7 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     println("finished contracting")
     # TODO - get the parameter order correct - params has higher dim.  
     # 
-    error = new_δ - products[3,:]*params # TODO - not all of params.  
+    error = 0# new_δ - products[3,:]*params # TODO - not all of params.  
     
     return error  # this must be sent back to the main process  
 end 
@@ -778,8 +791,8 @@ Returns both the original data set and a subset called wanted_data w/ just the c
 - Comes sorted from mkt_shares.do  
 -  
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"]
-yr1 = [2009, 2010, 2011, 2012, 2013]
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
 a1 = MarketShares(st1, yr1)
 
 """
@@ -799,9 +812,9 @@ Takes a set `Characteristics` of column indexes in the file and returns the char
 NB: comes sorted out of mkt_shares.do.
 TODO - make sure all future continuous variables are normalized.
 TODO - need variables to split the market up 
+TODO - would make sense to keep the list so that InitialParams will still behave as intended.  
 ## TEST ### 
-
-charcs = ProductChars()
+charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package)
 
 Columns: 
 ["ndc_code", 
@@ -818,28 +831,15 @@ Columns:
  "small_package", 
  "medium_package", 
  "large_package"]
+
 """
-function ProductChars()
+function ProductChars(Characteristics...)
     inp_charcs = CSV.read("./products_characteristics.csv") |> DataFrame
-    characteristics = inp_charcs[ :, 
-                                [:ndc_code, 
-                                :avg_copay, 
-                                :codeine, 
-                                :hydrocodone, 
-                                :hydromorphone, 
-                                :methadone, 
-                                :morphine, 
-                                :oxycodone,
-                                :other, 
-                                :tramadol, 
-                                :mme, 
-                                :small_package, 
-                                :medium_package,
-                                :large_package]] 
+    charcs = inp_charcs[ !, [Characteristics...]] 
     # normalize cols 2 and 11, copay and mme.
-    characteristics[:,2] =NormalizeVar(characteristics[:,2])
-    characteristics[:,11] = NormalizeVar(characteristics[:,11])  
-    return convert(Array{Float64,2}, characteristics )
+    charcs[:,2] =NormalizeVar(charcs[:,2])
+    charcs[:,11] = NormalizeVar(charcs[:,11])  
+    return convert(Array{Float64,2}, charcs )
 end 
 
 
