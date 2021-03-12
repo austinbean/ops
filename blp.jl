@@ -183,7 +183,7 @@ end
 
 Returns a collection of simulated individuals numbering S across the markets M, where C is a set of random shocks and x... is a collection of characteristics.
 
-- M indexes markets. A list of e.g., strings ("Alabama", "Arkansas", ... ) or ("2001", "2002", ... ). 
+- M indexes markets. A list of e.g., strings ("Alabama", "Arkansas", ... ) or years or market-years.  
 - S is the number of individuals to be generated.
 - Ch is an integer. indexes the number of characteristics w/ a random coefficient as an integer (?)
 - x... is a list of demographics, e.g., pop_w, race_w, ... 
@@ -193,7 +193,9 @@ Returns a collection of simulated individuals numbering S across the markets M, 
 
 mkt_chars = CSV.read("./state_demographics.csv", DataFrame) 
 
-states = convert(Array{String,1}, mkt_chars[!,:name])
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+yr1 = [2009, 2010, 2011, 2012, 2013];
+mkt_ids = sort([Base.Iterators.product(st1,yr1)...], by = x-> (x[1], x[2]))
 
 pop_w = convert(Array{Float64,2}, mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]])
 
@@ -206,16 +208,20 @@ N_characteristics = 3
 sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop)
 
 # returns a 19 × 100 × 52 (characteristics × individuals × markets) array 
+
 """
-function PopMarkets(M, S, Ch, x...)
+function PopMarkets(M, S, Ch, x...; years = 5)
     # get the simulated for S individuals demographics over all of the markets M w/ Ch characteristics and x... demographics.  
     length = size( Sampler(1, x...) , 1)
     mkts = size(M,1)
-    outp = zeros(Float64, length+Ch, S, mkts) # hold space open for the ν = μ + σ*ϵ version of the shocks.
-    shocks = zeros(Float64, Ch, S, mkts)      # keep the ϵ's to make the shocks later.  
-    for i = 1:mkts 
-        outp[1:length,:,i] += Population(S, i, x...) 
-        shocks[1:Ch,:,i] += randn(Ch, S)     # shocks, but think carefully about this.  These go on product features.  
+    mlen = mkts*years
+    outp = zeros(Float64, length+Ch, S, mlen) # hold space open for the ν = μ + σ*ϵ version of the shocks.
+    shocks = zeros(Float64, Ch, S, mlen)   
+    for i = 1:mkts     
+        for k = 1:years  
+            outp[1:length,:,(i-1)*years+k] += Population(S, i, x...) 
+            shocks[1:Ch,:,(i-1)*years+k] += randn(Ch, S)     # shocks, but think carefully about this.  These go on product features.  
+        end 
     end 
     return outp, shocks  # separately holding demographics, shocks.  
 end 
@@ -232,7 +238,7 @@ This will compute the predicted market shares across all of the markets given in
 Operates in-place on mean_utils.  Ordered returned is products × markets in mean_utils.
 
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
@@ -278,7 +284,7 @@ This should operate in-place on the vector δ
 
 
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
@@ -339,7 +345,7 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 - D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
 
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
@@ -360,7 +366,7 @@ Util(cinc[:,1], cin_shock[:,1], charcs, shr, params_indices[1], params_indices[2
   maximum time:     1.942 ms (94.05% GC)
   
 ## Test Across individuals.
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013]; 
 shares =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
@@ -455,7 +461,7 @@ This should be:
 - log (s_{.t} (...) ) are log computed market shares. 
 
 ## Test ## 
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
@@ -535,14 +541,13 @@ EG have Contraction return δ and a MKT identifier tuple.  Easy fix.
 
 # Test 
 
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
+mkt_ID = [ Iterators.product(st1, yr1)...]
 shares =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
-cinc = markets[:,:,10];
-mkt_ID = [ Iterators.product(st1, yr1)...]
 FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, mkt_ID)
 
 
@@ -558,8 +563,11 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     m = [ mkts[:,:,k] for k = 1:size(mkts,3)]  # faster than a loop   
             # this is the wrong size because the markets do not differ by year 
     s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
-    p = repeat(params, num_mkts)      # dimension is wrong - num_mkts too small (52 only )
-    sp = repeat(shk_params, num_mkts) # dimension is wrong - num_mkts too small (52 only )
+    # is this right?  Will this chunk this correctly?  
+    p = [params for k = 1:num_mkts]      # dimension is wrong - num_mkts too small (52 only )
+    sp = [shk_params for k = 1:num_mkts] # dimension is wrong - num_mkts too small (52 only )
+    prods = [products for k = 1:num_mkts]
+    # TODO - the shares need to be changed.  Return the state/year separately.  
 
     # x[1] - markets, m as above
     # x[2] - market shocks, s as above
@@ -568,7 +576,7 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     # x[5] - products, comes w/ right dimension.
     # x[6] - empirical shares, comes w/ right dimension.
     # x[7] - market-level ID's 
-    contract_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, products, empirical_shares, IDs))
+    contract_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, prods, empirical_shares, IDs))
     labels, new_δ = ([x[1] for x in contract_δ], [x[2] for x in contract_δ]) # separate to regress.
     println("finished contracting")
     # TODO - get the parameter order correct - params has higher dim.  
@@ -795,19 +803,22 @@ Returns both the original data set and a subset called wanted_data w/ just the c
 - Comes sorted from mkt_shares.do  
 -  
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 a1 = MarketShares(st1, yr1)
 TODO: hold el[1], el[2] separate and return separately.  
 """
 function MarketShares(MKT...) # take a variable identifying the market here
+    # TODO - rewrite to return two vectors, one w/ data the other w/ state/year. 
     inp_shares = CSV.read("./state_year_shares.csv") |> DataFrame 
-    market_shares = Array{ Tuple{ String, Int64 ,Array{Union{String,Real},2} } , 1}()
+    market_shares = Array{Array{Union{String,Real},2}, 1 }() 
+    labels = Array{ Tuple{ String, Int64 } , 1}()
     for el in Iterators.product(MKT...)
         tm1 = convert(Array{Union{String,Real},2}, inp_shares[ (inp_shares[:state].==el[1]).&(inp_shares[:yr].==el[2]) , [:ndc_code, :market_share]])
-        push!(market_shares, (el[1], el[2], tm1))
+        push!(labels, (el[1], el[2]))
+        push!(market_shares, tm1)
     end 
-    return market_shares 
+    return market_shares, labels 
 end 
 
 """
