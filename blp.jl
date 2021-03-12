@@ -534,7 +534,7 @@ NB: some care should be taken to make sure these can be re-identified.
 EG have Contraction return δ and a MKT identifier tuple.  Easy fix.  
 
 # Test 
-TODO - here I have the markets as years, but I in mkts I have the markets as states.
+
 st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares =MarketShares(st1, yr1);
@@ -542,8 +542,8 @@ charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorph
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
-
-FormError(cinc, params_indices[1], charcs[1], shares[1])
+mkt_ID = [ Iterators.product(st1, yr1)...]
+FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, mkt_ID)
 
 
 TODO - since I don't know what will finish when Contraction should return a market-level identifier.
@@ -554,10 +554,12 @@ TODO - fix tolerance when debugging is done!
 function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products::Array, empirical_shares, IDs; random_coeffs = 3)
     demos, individuals, num_mkts = size(mkts)
     # collect all the markets in a vector of Array{Float,2}
+        # this is the wrong size because the markets do not differ by year 
     m = [ mkts[:,:,k] for k = 1:size(mkts,3)]  # faster than a loop   
+            # this is the wrong size because the markets do not differ by year 
     s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
-    p = repeat(params, num_mkts)
-    sp = repeat(shk_params, num_mkts)
+    p = repeat(params, num_mkts)      # dimension is wrong - num_mkts too small (52 only )
+    sp = repeat(shk_params, num_mkts) # dimension is wrong - num_mkts too small (52 only )
 
     # x[1] - markets, m as above
     # x[2] - market shocks, s as above
@@ -728,6 +730,8 @@ Imports the demographics, draws a sample of simulated individuals according to t
 
 Returns a collection given by the call to PopMarkets at the bottom: 
 (characteristics + # rand shocks) × number of individuals × number of markets 
+
+# TODO - how many markets?  State × year I think.  
 """
 function MKT(N, C)
 
@@ -794,7 +798,7 @@ Returns both the original data set and a subset called wanted_data w/ just the c
 st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 a1 = MarketShares(st1, yr1)
-
+TODO: hold el[1], el[2] separate and return separately.  
 """
 function MarketShares(MKT...) # take a variable identifying the market here
     inp_shares = CSV.read("./state_year_shares.csv") |> DataFrame 
