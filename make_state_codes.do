@@ -1,5 +1,5 @@
 * add state code:
-
+drop if geo_id == "0400000US72" // dropping Puerto Rico, for which there is no prescription data.  
 gen st_cd = substr(geo_id, -2, .)
 gen st_abbrev = ""
 
