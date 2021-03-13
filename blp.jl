@@ -193,7 +193,7 @@ Returns a collection of simulated individuals numbering S across the markets M, 
 
 mkt_chars = CSV.read("./state_demographics.csv", DataFrame) 
 
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 mkt_ids = sort([Base.Iterators.product(st1,yr1)...], by = x-> (x[1], x[2]))
 
@@ -238,9 +238,9 @@ This will compute the predicted market shares across all of the markets given in
 Operates in-place on mean_utils.  Ordered returned is products × markets in mean_utils.
 
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
-shares = MarketShares(st1, yr1);
+shares, labs = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
@@ -284,17 +284,17 @@ This should operate in-place on the vector δ
 
 
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
-shares = MarketShares(st1, yr1);
+shares, labs = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 cin_shock = shocks[:,:,10];
-mu = zeros(size(shares[1][3],1));
-δ = zeros(size(shares[1][3],1));
-ind_u = zeros(size(shares[1][3],1)); 
+mu = zeros(size(shares[1],1));
+δ = zeros(size(shares[1],1));
+ind_u = zeros(size(shares[1],1)); 
 p = zeros(Float64,3);
 PredShare(cinc, cin_shock, params_indices[1],params_indices[2] , δ, charcs, mu, ind_u, p)
 @benchmark PredShare(cinc, cin_shock, params_indices[1],params_indices[2] , δ, charcs, mu, ind_u, p)
@@ -345,18 +345,17 @@ This is computing: exp ( δ + ∑_k x^k_jt (σ_k ν_i^k + π_k1 D_i1 + … + π_
 - D_i1, ..., D_id are demographic characteristics (no random coeff, but param π_id)
 
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
-shares =MarketShares(st1, yr1);
+shares, labs =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
 cinc = markets[:,:,10];
 cin_shock = shocks[:,:,10];
-
-utils = zeros(size(shares[1][3],1));
-δ = zeros(size(shares[1][3],1));
+utils = zeros(size(shares[1],1));
+δ = zeros(size(shares[1],1));
 pd = zeros(Float64,3)
-shr = zeros(size(shares[1][3],1));
+shr = zeros(size(shares[1],1));
 Util(cinc[:,1], cin_shock[:,1], charcs, shr, params_indices[1], params_indices[2] ,utils, pd );
 
 @benchmark Util(cinc[:,1], cin_shock[:,1], charcs, shr, params_indices[1], params_indices[2] ,utils, pd)
@@ -364,22 +363,6 @@ Util(cinc[:,1], cin_shock[:,1], charcs, shr, params_indices[1], params_indices[2
   median time:      69.050 μs (0.00% GC)
   mean time:        75.198 μs (2.18% GC)
   maximum time:     1.942 ms (94.05% GC)
-  
-## Test Across individuals.
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
-yr1 = [2009, 2010, 2011, 2012, 2013]; 
-shares =MarketShares(st1, yr1);
-charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
-params_indices, markets, shocks = MKT(10,3);
-cinc = markets[:,:,10];
-utils = zeros(size(shares[1])[1]);
-δ = zeros(size(shares[1])[1]);
-for i =1:size(cinc,2) 
-    println("sum prior: ", sum(utils))
-    Util(cinc[:,i], charcs[1], δ, params_indices[1], utils)
-    println("sum after ", sum(utils))
-    println(" approx 1 ", isapprox(sum(utils),1; rtol= 0.1)) # tolerance is pretty high, honestly.  Should be able to do better.
-end 
 
 ## Known answer test case ##
 us = [0.0 0.0 0.0]
@@ -415,6 +398,7 @@ function Util(demographics,
         for j = 2:num_chars                                 # TODO - this can be redone so that it doesn't require keeping track of this 3.
             @inbounds tmp_sum += products_char[i,j]*pd[j]   # TODO - 90% of the allocation in this function takes place here.
         end 
+        # TODO - bounds error here?  
         utils[i] += tmp_sum                                 # TODO - the other 10% of the allocation takes place here. 
     end   
     mx_u = maximum(utils)                                   # max for numerical stability - faster than doing the comparison every step in the main loop         
@@ -461,20 +445,18 @@ This should be:
 - log (s_{.t} (...) ) are log computed market shares. 
 
 ## Test ## 
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
-shares = MarketShares(st1, yr1);
+shares, labs = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 cinc_shock = shocks[:,:,10];
-market_shares = zeros(size(shares[1][3],1), 52);
-#AllMarketShares(markets, params_indices[1], delta, charcs[1], market_shares)
+market_shares = zeros(size(shares[1],1), 52);
     # TODO - indexing here will allocate, @view instead. 
-    emp_shr = @view shares[1][3][:,2] 
-    pred_shr = @view  market_shares[:,1]
-Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs, emp_shr, 4)
+    emp_shr = @view shares[1][:,2] 
+Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs, emp_shr[1], 4)
 
 
 This allocates a lot and takes a while, b/c it is computing PredShares until convergence.  
@@ -500,7 +482,7 @@ function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Ar
         if curr_its%1000 == 0
             @info ID curr_its conv two_norm
         end 
-        PredShare(mkt,mkt_shock, params, shk_params, new_δ, products, predicted_shares, us, pd)
+        PredShare(mkt, mkt_shock, params, shk_params, new_δ, products, predicted_shares, us, pd)
         # now update the δ
         for i = 1:length(new_δ)
             δ[i] = new_δ[i]                                                             # copy/reassign so that I can preserve these values to compare.  
@@ -541,14 +523,18 @@ EG have Contraction return δ and a MKT identifier tuple.  Easy fix.
 
 # Test 
 
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
 mkt_ID = [ Iterators.product(st1, yr1)...]
-shares =MarketShares(st1, yr1);
+shares, labs =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
-FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, mkt_ID)
+FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, labs)
+
+# Test Contraction: 
+
+Contraction(markets[:,:,1], shocks[:,:,1], params_indices[1], params_indices[2], charcs, shares[1], "aaa")
 
 
 TODO - since I don't know what will finish when Contraction should return a market-level identifier.
@@ -564,11 +550,17 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
             # this is the wrong size because the markets do not differ by year 
     s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
     # is this right?  Will this chunk this correctly?  
-    p = [params for k = 1:num_mkts]      # dimension is wrong - num_mkts too small (52 only )
-    sp = [shk_params for k = 1:num_mkts] # dimension is wrong - num_mkts too small (52 only )
+    p = [params for k = 1:num_mkts]      
+    sp = [shk_params for k = 1:num_mkts] 
     prods = [products for k = 1:num_mkts]
     # TODO - the shares need to be changed.  Return the state/year separately.  
-
+    println("size m ", size(m))
+    println("size s ", size(s))
+    println("size p ", size(p))
+    println("size sp ", size(sp))
+    println("size prods", size(prods))
+    println("size id ", size(IDs))
+    println("size emp ", size(empirical_shares))
     # x[1] - markets, m as above
     # x[2] - market shocks, s as above
     # x[3] - parameters, repeated for each processor
@@ -739,6 +731,10 @@ Imports the demographics, draws a sample of simulated individuals according to t
 Returns a collection given by the call to PopMarkets at the bottom: 
 (characteristics + # rand shocks) × number of individuals × number of markets 
 
+# Test:
+
+mkk = MKT(10,3)
+
 # TODO - how many markets?  State × year I think.  
 """
 function MKT(N, C)
@@ -803,9 +799,9 @@ Returns both the original data set and a subset called wanted_data w/ just the c
 - Comes sorted from mkt_shares.do  
 -  
 ## TEST ##
-st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "PR", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
+st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
-a1 = MarketShares(st1, yr1)
+a1, a2 = MarketShares(st1, yr1)
 TODO: hold el[1], el[2] separate and return separately.  
 """
 function MarketShares(MKT...) # take a variable identifying the market here
