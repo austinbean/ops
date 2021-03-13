@@ -78,6 +78,7 @@ global ops_prog_filep = "/Users/austinbean/Desktop/programs/opioids/"
  
 * another health insurance by state 
 	* USE THIS ONE.  
+		* NB: has no Puerto Rico data. 
   import excel "${demo_filep}health_insurance_status_by_state/hic04_acs.xlsx", cellrange(A4:AX577)  clear
   replace D = "2019" if _n == 1
   replace E = "2019" if _n == 1
@@ -213,6 +214,8 @@ replace st_cd = "54" if lower(geo_id) =="west virginia"	//54  WV	West Virginia
 replace st_cd = "55" if lower(geo_id) =="wisconsin"	//55  WI	Wisconsin
 replace st_cd = "56" if lower(geo_id) =="wyoming"	//56  WY	Wyoming
 
+drop if st_cd == "72" 
+
 rename name Nation_or_State 
 drop geo_id  
 
@@ -284,7 +287,7 @@ reshape wide insured_2010_, i(Nation_or_State) j(Coverage_Type) string
  rename total_80_84 pop_80_84
  rename total_85_plus pop_85_plus
  
- 
+ drop if Nation_or_State == "United States" | geo_id == "" // these will drop the same row.  
  export delimited using "${ops_prog_filep}state_demographics.csv", replace
  
  * Save here 
