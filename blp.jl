@@ -466,7 +466,7 @@ Timing note: all overhead is due to Utils, via PredShares
 # TODO - now returns all NaNs pretty rapidly    
 
 """
-function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 100)
+function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 5)
     conv = 1.0
     curr_its = 1
     us = zeros(size(products,1),1)                      # TODO - check that this will be right.  
@@ -507,18 +507,23 @@ end
 
 """
 `FormError(mkts, params::Array, products::Array, empirical_shares, predicted_shares)`
-- mkts -  ALL of the markets 
-- params::Array - shared ?
-- products::Array - receive from a higher level 
-- empirical_shares - receive from a higher level
-- predicted_shares - 
-- ; random_coeffs = 3: number of characteristics w/ a random coefficient.  These are LAST on the parameters vector.
+- mkts: the markets, e.g., demographics for N simulated individuals in the markets
+- mkt_shocks: shocks for the random coeffs of N individuals in the market 
+- params::Array: Current value of the parameters, except those for the shocks 
+- shk_params::Array: Current value of the mean and variance of the shock parameters
+- products::Array: product characteristics 
+- empirical_shares: data, e.g., the empirical shares 
+- IDs: a vector of IDs (here tuples of "state abbrev" and int year)
+- random_coeffs = 3: number of random coefficients.  
+
 This will pmap the Contraction function across the markets to recover the error ω.
 Computes ω = δ - X_1 Θ_1, where X_1 is J × T, where J is the number of products and T is the number of markets.  
-This can be done separately across markets and returned one market at a time in parallel via pmap.
-Pmap will automatically return a vector of whatever Contraction returns.
-NB: some care should be taken to make sure these can be re-identified.
-EG have Contraction return δ and a MKT identifier tuple.  Easy fix.  
+Per appendix Step 0, X_1 contains the components of the δ in Equation (3) in RG p.520.
+So δ_jt = x_jt β - α p_jt + ξ_jt.  The contraction recovers δ_jt.   
+There is a current set of parameters θ_1 = (β, α) which are in params.
+The characteristics are in products.  This is the X_1 in X_1 Θ_1
+So all that is necessary is to recover ξ_jt = δ_jt - X_jt (β α) 
+These are the characteristics without random coefficients.   
 
 # Test 
 
@@ -531,12 +536,6 @@ params_indices, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, labs)
 
-# Test Contraction: 
-
-Contraction(markets[:,:,1], shocks[:,:,1], params_indices[1], params_indices[2], charcs, shares[1], "aaa")
-
-
-TODO - since I don't know what will finish when Contraction should return a market-level identifier.
 TODO - need to fix the products × params issue.  
 TODO - fix tolerance when debugging is done!
 
@@ -558,9 +557,12 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     contract_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, prods, empirical_shares, IDs))
     labels, new_δ = ([x[1] for x in contract_δ], [x[2] for x in contract_δ]) # separate to regress.
     println("finished contracting")
+        # TODO - is does not make sense to do these as rows since the storage order is column major.  
+    reduce(vcat, [transpose(x) for x in new_δ])
     # TODO - get the parameter order correct - params has higher dim.  
-    error = 0# new_δ - products[3,:]*params # TODO - not all of params.   
-    return error  # this must be sent back to the main process  
+    # error = 0
+    # new_δ - products[3,:]*params # TODO - not all of params.   
+    return labels, new_δ  # this must be sent back to the main process  
 end 
 
 
