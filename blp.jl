@@ -384,7 +384,7 @@ function Util(demographics,
     num_prods, num_chars = size(products_char)
     ZeroOut(pd)
     demo_ix = size(demographics,1)-size(pd,1) # Starting point.  This is terrible.  
-    for k = 1:size(pd,1) ## TODO - this is awful.  Fix it.  
+    for k = 1:size(pd,1)  
         @inbounds demographics[demo_ix+k] = shock_params[1,k] + shock_params[2,k]*shocks[k] # Creates the characteristic-specific shock first.  
     end 
     for j = 1:size(pd,1)   # == size(params,2) 
@@ -398,7 +398,6 @@ function Util(demographics,
         for j = 2:num_chars                                 # TODO - this can be redone so that it doesn't require keeping track of this 3.
             @inbounds tmp_sum += products_char[i,j]*pd[j]   # TODO - 90% of the allocation in this function takes place here.
         end 
-        # TODO - bounds error here?  
         utils[i] += tmp_sum                                 # TODO - the other 10% of the allocation takes place here. 
     end   
     mx_u = maximum(utils)                                   # max for numerical stability - faster than doing the comparison every step in the main loop         
@@ -456,7 +455,7 @@ cinc_shock = shocks[:,:,10];
 market_shares = zeros(size(shares[1],1), 52);
     # TODO - indexing here will allocate, @view instead. 
     emp_shr = @view shares[1][:,2] 
-Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs, emp_shr[1], 4)
+Contraction(cinc, cinc_shock, params_indices[1], params_indices[2], charcs, emp_shr, 4)
 
 
 This allocates a lot and takes a while, b/c it is computing PredShares until convergence.  
@@ -470,11 +469,11 @@ Timing note: all overhead is due to Utils, via PredShares
 function Contraction(mkt::Array, mkt_shock::Array, params::Array, shk_params::Array, products::Array, empirical_shares, ID; ϵ = 1e-6, max_it = 100)
     conv = 1.0
     curr_its = 1
-    us = zeros(size(products,1))                      # TODO - check that this will be right.  
-    δ = zeros(size(empirical_shares)).+=(1/size(empirical_shares,1))
-    new_δ = zeros(size(empirical_shares))             # TODO - these can be started at a better value, like log(s) - log(s_0)
-    predicted_shares = zeros(size(empirical_shares))
-    pd = zeros(Float64, size(mkt_shock,1))            # The number of random coefficients.
+    us = zeros(size(products,1),1)                      # TODO - check that this will be right.  
+    δ = zeros(size(empirical_shares,1),1).+=(1/size(empirical_shares,1))
+    new_δ = zeros(size(empirical_shares,1))             # TODO - these can be started at a better value, like log(s) - log(s_0)
+    predicted_shares = zeros(size(empirical_shares,1),1)
+    pd = zeros(Float64, size(mkt_shock,1),1)            # The number of random coefficients.
     while (conv > ϵ) & (curr_its < max_it)
         # debugging related... 
         conv = norm(new_δ.-δ, Inf) 
@@ -544,37 +543,23 @@ TODO - fix tolerance when debugging is done!
 """
 function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products::Array, empirical_shares, IDs; random_coeffs = 3)
     demos, individuals, num_mkts = size(mkts)
-    # collect all the markets in a vector of Array{Float,2}
-        # this is the wrong size because the markets do not differ by year 
     m = [ mkts[:,:,k] for k = 1:size(mkts,3)]  # faster than a loop   
-            # this is the wrong size because the markets do not differ by year 
     s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
-    # is this right?  Will this chunk this correctly?  
     p = [params for k = 1:num_mkts]      
     sp = [shk_params for k = 1:num_mkts] 
     prods = [products for k = 1:num_mkts]
-    # TODO - the shares need to be changed.  Return the state/year separately.  
-    println("size m ", size(m))
-    println("size s ", size(s))
-    println("size p ", size(p))
-    println("size sp ", size(sp))
-    println("size prods", size(prods))
-    println("size id ", size(IDs))
-    println("size emp ", size(empirical_shares))
-    # x[1] - markets, m as above
-    # x[2] - market shocks, s as above
-    # x[3] - parameters, repeated for each processor
-    # x[4] - shock parameters, repeated for each processor 
-    # x[5] - products, comes w/ right dimension.
-    # x[6] - empirical shares, comes w/ right dimension.
-    # x[7] - market-level ID's 
+        # x[1] - markets, m as above
+        # x[2] - market shocks, s as above
+        # x[3] - parameters, repeated for each processor
+        # x[4] - shock parameters, repeated for each processor 
+        # x[5] - products, comes w/ right dimension.
+        # x[6] - empirical shares, comes w/ right dimension.
+        # x[7] - market-level ID's 
     contract_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, prods, empirical_shares, IDs))
     labels, new_δ = ([x[1] for x in contract_δ], [x[2] for x in contract_δ]) # separate to regress.
     println("finished contracting")
     # TODO - get the parameter order correct - params has higher dim.  
-    # 
-    error = 0# new_δ - products[3,:]*params # TODO - not all of params.  
-    
+    error = 0# new_δ - products[3,:]*params # TODO - not all of params.   
     return error  # this must be sent back to the main process  
 end 
 
