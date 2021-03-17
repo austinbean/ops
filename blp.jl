@@ -242,7 +242,7 @@ st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares, labs = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
-params_indices, markets, shocks = MKT(10,3);
+params_indices, common_params, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 
@@ -288,7 +288,7 @@ st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares, labs = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
-params_indices, markets, shocks = MKT(10,3);
+params_indices, common_params, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 cin_shock = shocks[:,:,10];
@@ -349,7 +349,7 @@ st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares, labs =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
-params_indices, markets, shocks = MKT(10,3);
+params_indices, common_params, markets, shocks = MKT(10,3);
 cinc = markets[:,:,10];
 cin_shock = shocks[:,:,10];
 utils = zeros(size(shares[1],1));
@@ -448,7 +448,7 @@ st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "
 yr1 = [2009, 2010, 2011, 2012, 2013];
 shares, labs = MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
-params_indices, markets, shocks = MKT(10,3);
+params_indices, common_params, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 cinc = markets[:,:,10];
 cinc_shock = shocks[:,:,10];
@@ -532,7 +532,7 @@ yr1 = [2009, 2010, 2011, 2012, 2013];
 mkt_ID = [ Iterators.product(st1, yr1)...]
 shares, labs =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
-params_indices, markets, shocks = MKT(10,3);
+params_indices, common_params, markets, shocks = MKT(10,3);
     # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
 FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, labs)
 
@@ -707,6 +707,47 @@ function InitialParams(Characteristics, x...; rand_init = true )
     end 
 end 
 
+
+"""
+`ProductParams`
+This function returns the parameters which multiply the characteristics within δ_jt.
+Since δ_jt = x_{jt}β- α p_{jt} + ξ_{jt} we need parameters multiplying the product
+characteristics which are shared across all individuals in the market. 
+
+- Takes a collection of product characteristics and returns some parameters.  
+ 
+ cop = (:copay, [:copay]) 
+ ingr = (:active_ingredient, [:codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone, :other, :tramadol]) 
+ mme = (:mme, [:mme])
+ pack = (:package_size, [:small_package, :medium_package, :large_package])
+
+
+ProductParams(cop, ingr, mme, pack)
+"""
+function ProductParams(Characteristics...)
+    Random.seed!(31) 
+    # 13 total
+    locs = Array{Tuple{Int64,Int64},1}() 
+    name_loc = Array{Tuple{Symbol, Int64},1}()
+    ix = 1
+    tot_p = 0
+    for el in Characteristics
+        tot_p += length(el[2])
+        tup1 = (ix, ix+(length(el[2])-1))
+        push!(locs, tup1 )
+        for i = 1:length(el[2])        
+            push!(name_loc, (el[2][i], ix+i-1))
+        end 
+        ix += length(el[2])
+    end  
+    return randn(ix-1), locs, name_loc   
+end 
+
+
+
+
+
+
 """
 `MKT(N, C)`
 
@@ -765,13 +806,20 @@ function MKT(N, C)
     unemp = (OH(size(unemployment_w, 2)), MFW(unemployment_w))
     hhinc = (OH(size(hhinc_w, 2)), MFW(hhinc_w))
 
+    # TODO:  dumb place to put these
+    cop = (:copay, [:copay]) 
+    ingr = (:active_ingredient, [:codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone, :other, :tramadol]) 
+    mme = (:mme, [:mme])
+    pack = (:package_size, [:small_package, :medium_package, :large_package])
+
+    common_params, common_locs, common_names = ProductParams(cop, ingr, mme, pack)
     params = InitialParams(3, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # NB size of this is: ("features" = demographics + characteristics) × number of individuals × # of markets 
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
     sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # products w/ their characteristics.   
     # shares, when available. 
-    return params, sim_individuals, shocks 
+    return params, common_params, sim_individuals, shocks 
 end 
 
 
@@ -829,6 +877,13 @@ Columns:
  "small_package", 
  "medium_package", 
  "large_package"]
+
+ Categories:
+ [:ndc_code, [:copay]], 
+ [:copay, [:copay]], 
+ (:active_ingredient, [:codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone, :other, :tramadol]) 
+ [:mme, [:mme]], 
+ (:package_size, [:small_package, :medium_package, :large_package])
 
 """
 function ProductChars(Characteristics...)
