@@ -511,6 +511,7 @@ end
 - mkt_shocks: shocks for the random coeffs of N individuals in the market 
 - params::Array: Current value of the parameters, except those for the shocks 
 - shk_params::Array: Current value of the mean and variance of the shock parameters
+- common_params::Array: current value of the common parameters.  
 - products::Array: product characteristics 
 - empirical_shares: data, e.g., the empirical shares 
 - IDs: a vector of IDs (here tuples of "state abbrev" and int year)
@@ -529,18 +530,31 @@ These are the characteristics without random coefficients.
 
 st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "IA", "ID", "IL", "IN", "KS", "KY", "LA", "MA", "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NC", "ND", "NE", "NH", "NJ", "NM", "NV", "NY", "OH", "OK", "OR", "PA", "RI", "SC", "SD", "TN", "TX", "UT", "VA", "VT", "WA", "WI", "WV", "WY"];
 yr1 = [2009, 2010, 2011, 2012, 2013];
+
+cop = (:copay, [:copay]) 
+ingr = (:active_ingredient, [:codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone, :other, :tramadol]) 
+mme = (:mme, [:mme])
+pack = (:package_size, [:small_package, :medium_package, :large_package])
+
 mkt_ID = [ Iterators.product(st1, yr1)...]
 shares, labs =MarketShares(st1, yr1);
 charcs = ProductChars(:ndc_code, :avg_copay, :codeine, :hydrocodone, :hydromorphone, :methadone, :morphine, :oxycodone,:other, :tramadol, :mme, :small_package, :medium_package,:large_package);
 params_indices, common_params, markets, shocks = MKT(10,3);
-    # now markets is [93,10,52] - characteristics dim × individuals × markets (states)
-FormError(markets, shocks, params_indices[1], params_indices[2], charcs, shares, labs)
+common_params, common_locs, common_names = ProductParams(cop, ingr, mme, pack)
+
+labs, val = FormError(markets, shocks, params_indices[1], params_indices[2], common_params, charcs, shares, labs)
 
 TODO - need to fix the products × params issue.  
 TODO - fix tolerance when debugging is done!
+TODO - several of these return all NaNs.  
+("CA", 2009)
+("DE", 2009)
+("HI", 2009)
+("DC", 2012)
+("SD", 2013) 
 
 """
-function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products::Array, empirical_shares, IDs; random_coeffs = 3)
+function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, common_params::Array, products::Array, empirical_shares, IDs; random_coeffs = 3)
     demos, individuals, num_mkts = size(mkts)
     m = [ mkts[:,:,k] for k = 1:size(mkts,3)]  # faster than a loop   
     s = [ mkt_shocks[:,:,k] for k = 1:size(mkt_shocks,3)]
@@ -558,8 +572,13 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, products:
     labels, new_δ = ([x[1] for x in contract_δ], [x[2] for x in contract_δ]) # separate to regress.
     println("finished contracting")
         # TODO - is does not make sense to do these as rows since the storage order is column major.  
-    reduce(vcat, [transpose(x) for x in new_δ])
-    # TODO - get the parameter order correct - params has higher dim.  
+    mkt_δ = reduce(hcat, new_δ)
+        # TODO - now with the above we can form a product with the characteristics.
+    err = zeros(size(mkt_δ)) # TODO - preallocate this 
+        # TODO - form the error per product.  
+    for i = 1:size()
+        # form error here.  
+    end 
     # error = 0
     # new_δ - products[3,:]*params # TODO - not all of params.   
     return labels, new_δ  # this must be sent back to the main process  
