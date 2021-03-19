@@ -580,7 +580,9 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, common_pa
         err[j,i] = mkt_δ[j,i] - pv'*mv# form error here.  
         end 
     end 
-    return labels, err  # this must be sent back to the main process  
+    # reshape to stack 
+    err = reshape(err, (size(err,1)*size(err,2), 1)) # dimensions are J products × T markets 
+    return labels, err   
 end 
 
 
