@@ -570,18 +570,17 @@ function FormError(mkts, mkt_shocks, params::Array, shk_params::Array, common_pa
         # x[7] - market-level ID's 
     contract_δ = pmap(x->Contraction(x[1], x[2], x[3], x[4], x[5], x[6], x[7]), zip(m, s, p, sp, prods, empirical_shares, IDs))
     labels, new_δ = ([x[1] for x in contract_δ], [x[2] for x in contract_δ]) # separate to regress.
-    println("finished contracting")
         # TODO - is does not make sense to do these as rows since the storage order is column major.  
     mkt_δ = reduce(hcat, new_δ)
-        # TODO - now with the above we can form a product with the characteristics.
     err = zeros(size(mkt_δ)) # TODO - preallocate this 
-        # TODO - form the error per product.  
-    for i = 1:size()
-        # form error here.  
+    for i = 1:size(mkt_δ,2) # up to 255 
+        for j = 1:size(mkt_δ, 1)  # up to 
+        pv = @view products[j, 2:end]
+        mv = @view common_params[:]       
+        err[j,i] = mkt_δ[j,i] - pv'*mv# form error here.  
+        end 
     end 
-    # error = 0
-    # new_δ - products[3,:]*params # TODO - not all of params.   
-    return labels, new_δ  # this must be sent back to the main process  
+    return labels, err  # this must be sent back to the main process  
 end 
 
 
