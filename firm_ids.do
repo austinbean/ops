@@ -55,8 +55,10 @@ duplicates drop ndccode1 labelername, force
 
 
 ***** ALL FIRMS ****
+	// one source of data: https://www.drugs.com/pharmaceutical-companies.html
+	// perhaps does not have historical data, and is producer, not labeler focused.  
 gen firmid = ""
-
+sort labelername
 
 	
 * AbbVie
@@ -66,6 +68,7 @@ gen firmid = ""
 * Actavis Pharma
 	// later merged w/ allergan, but after this data
     replace firmid = "0228" if ndccode == "0228"
+	replace firmid = "0228" if labelername == "Actavis Pharma"
  
 * Allergan
 	// later merged w/ actavis, but after this data.
@@ -138,45 +141,54 @@ gen firmid = ""
     replace firmid = "55045" if ndccode == "55045"
  
 * E Fougera &amp; Co a division of Fougera Pharmaceuticals
-    replace firmid = 0168 if ndccode == 0168
+    replace firmid = "0168" if ndccode == "0168"
  
 * EPIC PHARMA
-    replace firmid = 42806 if ndccode == 42806
+    replace firmid = "42806" if ndccode == "42806"
  
 * Eon Labs
-    replace firmid = 0185 if ndccode == 0185
- 
-* Epic Pharma
-    replace firmid = 42806 if ndccode == 42806
+	// part of Sandoz, which is part of Novartis - assigned to Novartis.  
+    replace firmid = "0078" if ndccode == "0185"
  
 * G&amp;W Laboratories
-    replace firmid = 0713 if ndccode == 0713
+	// now owned by a firm called Cossette pharma, but after this data.  
+    replace firmid = "0713" if ndccode == "0713"
  
 * GD Searle  Division of Pfizer
-    replace firmid = 0025 if ndccode == 0025
+	// already has the Pfizer labeler code 
+    replace firmid = "0025" if ndccode == "0025"
  
 * Genentech
-    replace firmid = 0004 if ndccode == 0004
+	// subsidiary of Roche after 2009, but Roche does not appear here.  
+	// Roche has a large number of subsidiaries 
+    replace firmid = "0004" if ndccode == "0004"
  
 * GlaxoSmithKline Consumer Healthcare Holdings (US)
-    replace firmid = 0067 if ndccode == 0067
+	// has many subsidiaries. 
+    replace firmid = "0067" if ndccode == "0067"
  
 * Greenstone
-    replace firmid = 59762 if ndccode == 59762
+	// subsidiary of pfizer 
+    replace firmid = "0025" if ndccode == "59762"
  
 * HJ Harkins Company
-    replace firmid = 52959 if ndccode == 52959
+	// privately held, seems independent.  http://hjharkinscompanyinc.com/
+    replace firmid = "52959" if ndccode == "52959"
  
 * Harmon Store
-    replace firmid = 63940 if ndccode == 63940
+	// maybe a small drug store chain?  This is a confusing one.
+    replace firmid = "63940" if ndccode == "63940"
  
 * Heritage Pharmaceuticals
-    replace firmid = 23155 if ndccode == 23155
+	// owned by an Indian pharma company called Emcure
+    replace firmid = "23155" if ndccode == "23155"
  
 * Heritage Pharmaceuticals  d/b/a Avet Pharmaceuticals
-    replace firmid = 23155 if ndccode == 23155
+	// same as above: owned by Emcure.
+    replace firmid = "23155" if ndccode == "23155"
  
 * Hikma Pharmaceuticals USA
+	// this one has some subsidiaries 
     replace firmid = 0054 if ndccode == 0054
  
 * Hospira
@@ -252,10 +264,10 @@ gen firmid = ""
     replace firmid = 0487 if ndccode == 0487
  
 * Novartis Consumer Health
-    replace firmid = 0067 if ndccode == 0067
+    replace firmid = "0078" if ndccode == "0067"
  
 * Novartis Pharmaceutical Corporation
-    replace firmid = 0078 if ndccode == 0078
+    replace firmid = "0078" if ndccode == "0078"
  
 * PD-Rx Pharmaceuticals
     replace firmid = 55289 if ndccode == 55289
@@ -270,10 +282,10 @@ gen firmid = ""
     replace firmid = 10147 if ndccode == 10147
  
 * Pfizer Consumer Healthcare
-    replace firmid = 0573 if ndccode == 0573
+    replace firmid = "0025" if ndccode == "0573"
  
 * Pfizer Laboratories Div Pfizer
-    replace firmid = 0025 if ndccode == 0025
+    replace firmid = "0025" if ndccode == "0025"
  
 * Pharmaceutical Associates
     replace firmid = 0121 if ndccode == 0121
@@ -306,10 +318,12 @@ gen firmid = ""
     replace firmid = 0536 if ndccode == 0536
  
 * Sandoz
-    replace firmid = 0781 if ndccode == 0781
+	// part of Novartis.
+    replace firmid = "0078" if ndccode == "0781"
  
 * SandozInc
-    replace firmid = 0781 if ndccode == 0781
+	// part of Novartis.
+    replace firmid = "0078" if ndccode == "0781"
  
 * Select Brand
     replace firmid = 15127 if ndccode == 15127
@@ -366,10 +380,12 @@ gen firmid = ""
     replace firmid = 0363 if ndccode == 0363
  
 * West-Ward Pharmaceuticals Corp
-    replace firmid = 0054 if ndccode == 0054
+	// part of Hikma and was during this period
+    replace firmid = "0054" if ndccode == "0054"
  
 * West-ward Pharmaceutical Corp
-    replace firmid = 0143 if ndccode == 0143
+	// part of Hikma and was during this period
+    replace firmid = "0054" if ndccode == "0143"
  
 * Wyeth Consumer Healthcare
     replace firmid = 0031 if ndccode == 0031
