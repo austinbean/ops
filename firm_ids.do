@@ -59,6 +59,8 @@ duplicates drop ndccode1 labelername, force
 	// perhaps does not have historical data, and is producer, not labeler focused.  
 gen firmid = ""
 sort labelername
+drop ndccode 
+rename ndccode1 ndccode 
 
 	
 * AbbVie
@@ -68,7 +70,7 @@ sort labelername
 * Actavis Pharma
 	// later merged w/ allergan, but after this data
     replace firmid = "0228" if ndccode == "0228"
-	replace firmid = "0228" if labelername == "Actavis Pharma"
+	replace firmid = "0228" if regexm(lower(labelername),"actavis")
  
 * Allergan
 	// later merged w/ actavis, but after this data.
@@ -90,6 +92,7 @@ sort labelername
  
 * Aphena Pharma Solutions - Tennessee
     replace firmid = "43353" if ndccode == "43353"
+	replace firmid = "43353" if ndccode == "67544"
  
 * Apotex Corp
 	// "proudly Canadian" no other owner
@@ -189,79 +192,95 @@ sort labelername
  
 * Hikma Pharmaceuticals USA
 	// this one has some subsidiaries 
-    replace firmid = 0054 if ndccode == 0054
+    replace firmid = "0054" if ndccode == "0054"
+	replace firmid = "0054" if ndccode == "0641"
  
 * Hospira
-    replace firmid = 0409 if ndccode == 0409
+	// earlier part of Abbott, but spun off prior to this period.  
+	// part of Pfizer after 2015 but not in this data.  
+    replace firmid = "0409" if ndccode == "0409"
  
 * IVAX Pharmaceuticals
-    replace firmid = 0172 if ndccode == 0172
+	// owned by TEVA 
+    replace firmid = "0093" if ndccode == "0172"
  
 * Impax Generics
-    replace firmid = 0115 if ndccode == 0115
+	// purchased by Amneal, but after this data
+    replace firmid = "0115" if ndccode == "0115"
  
 * Indivior
-    replace firmid = 12496 if ndccode == 12496
+	// division of Reckitt-Benckiser until 2014
+    replace firmid = "12496" if ndccode == "12496"
  
 * International Medication Systems Limited
-    replace firmid = 76329 if ndccode == 76329
+	// Subsidiary of Amphastar
+    replace firmid = "76329" if ndccode == "76329"
  
 * Janssen Pharmaceuticals
-    replace firmid = 50458 if ndccode == 50458
+	// subsidiary of Johnson and Johnson 
+    replace firmid = "50458" if ndccode == "50458"
  
 * L Perrigo Company
-    replace firmid = 0113 if ndccode == 0113
+	// independent but has subsidiaries, per Wikipedia article.  
+    replace firmid = "0113" if ndccode == "0113"
  
 * Lake Erie Medical &amp; Surgical Supply DBA Quality Care Products
-    replace firmid = 49999 if ndccode == 49999
+	// this might be just a store? this one is confusing
+    replace firmid = "49999" if ndccode == "49999"
  
 * Lake Erie Medical DBA Quality Care Products
-    replace firmid = 49999 if ndccode == 49999
+	// same as above.  TODO
+    replace firmid = "49999" if ndccode == "49999"
  
 * Lannett Company
-    replace firmid = 0527 if ndccode == 0527
+	// independent
+    replace firmid = "0527" if ndccode == "0527"
  
 * Liberty Pharmaceuticals
-    replace firmid = 0440 if ndccode == 0440
+	// independent
+    replace firmid = "0440" if ndccode == "0440"
  
 * Major
-    replace firmid = 0904 if ndccode == 0904
- 
-* Major Pharmaceuticals
-    replace firmid = 0904 if ndccode == 0904
+	//  affiliated w/ Rugby as of 2012
+	// TODO - one firm after 2012  
+    replace firmid = "0904" if ndccode == "0904"
  
 * Mallinckrodt
-    replace firmid = 0406 if ndccode == 0406
- 
-* Marnel Pharmaceutcals
-    replace firmid = 0682 if ndccode == 0682
- 
+	// independent, w/ many subsidiaries
+    replace firmid = "0406" if ndccode == "0406"
+  
 * Marnel Pharmaceuticals
-    replace firmid = 0682 if ndccode == 0682
+	// dermatology products?
+    replace firmid = "0682" if ndccode == "0682"
  
 * McKesson
-    replace firmid = 49348 if ndccode == 49348
+	// distributor maybe?  Very large firm.  
+    replace firmid = "49348" if ndccode == "49348"
  
 * McKesson (Health Mart)
-    replace firmid = 62011 if ndccode == 62011
+    replace firmid = "49348" if ndccode == "62011"
  
 * McKesson Corporation dba SKY Packaging
-    replace firmid = 63739 if ndccode == 63739
+    replace firmid = "49348" if ndccode == "63739"
  
 * Mckesson
-    replace firmid = 49348 if ndccode == 49348
+    replace firmid = "49348" if ndccode == "49348"
  
 * Mylan Pharmaceuticals
-    replace firmid = 0378 if ndccode == 0378
+	// as of 2020 part of Pfizer 
+    replace firmid = "0378" if ndccode == "0378"
  
 * NCS HealthCare of KY  dba Vangard Labs
-    replace firmid = 0615 if ndccode == 0615
+	// independent?  now closed.
+    replace firmid = "0615" if ndccode == "0615"
  
 * NDC
-    replace firmid = 43128 if ndccode == 43128
+	// TODO this is more likely a data entry error than anything else...
+    replace firmid = "43128" if ndccode == "43128"
  
 * Nephron SC
-    replace firmid = 0487 if ndccode == 0487
+	// TODO - weird firm for this data.
+    replace firmid = "0487" if ndccode == "0487"
  
 * Novartis Consumer Health
     replace firmid = "0078" if ndccode == "0067"
@@ -270,52 +289,61 @@ sort labelername
     replace firmid = "0078" if ndccode == "0078"
  
 * PD-Rx Pharmaceuticals
-    replace firmid = 55289 if ndccode == 55289
+	// probably a packager
+    replace firmid = "55289" if ndccode == "55289"
  
 * Paddock Laboratories
-    replace firmid = 0574 if ndccode == 0574
+	//  a subsidiary of Perrigo 
+    replace firmid = "0113" if ndccode == "0574"
  
 * Par Pharmaceutical
-    replace firmid = 0603 if ndccode == 0603
+	// an Endo company.  acquired qualitest in 2010 (this data)
+    replace firmid = "0603" if ndccode == "0603"
  
 * Patriot Pharmaceuticals
-    replace firmid = 10147 if ndccode == 10147
+	// authorized generics for Johnson and Johnson / Janssen.  
+    replace firmid = "50458" if ndccode == "10147"
  
 * Pfizer Consumer Healthcare
     replace firmid = "0025" if ndccode == "0573"
  
 * Pfizer Laboratories Div Pfizer
-    replace firmid = "0025" if ndccode == "0025"
+    replace firmid = "0025" if ndccode == "0069"
  
 * Pharmaceutical Associates
-    replace firmid = 0121 if ndccode == 0121
+	// subsidiary of beach products, which otherwise does not appear
+    replace firmid = "0121" if ndccode == "0121"
  
 * Polygen Pharmaceuticals
-    replace firmid = 52605 if ndccode == 52605
+	// find neither subsidiaries nor parents
+    replace firmid = "52605" if ndccode == "52605"
  
 * Qualitest Pharmaceutical
-    replace firmid = 0603 if ndccode == 0603
- 
-* Qualitest Pharmaceuticals
-    replace firmid = 0603 if ndccode == 0603
+	// acquired by Endo in 2010 (see Par Pharma above)
+    replace firmid = "0603" if ndccode == "0603"
  
 * RUGBY LABORATORIES
-    replace firmid = 0536 if ndccode == 0536
+	* affiliated with Major after 2012 (this data)
+	* TODO - acquired during this period.  
+    replace firmid = "0536" if ndccode == "0536"
  
 * Rebel Distributors Corp
-    replace firmid = 21695 if ndccode == 21695
+	// probably a distributor.
+    replace firmid = "21695" if ndccode == "21695"
  
 * Reckitt Benckiser Pharmaceuticals
-    replace firmid = 12496 if ndccode == 12496
+	// has a subsidiary listed above.  
+    replace firmid = "12496" if ndccode == "12496"
  
 * Rite Aid Corporation
-    replace firmid = 11822 if ndccode == 11822
+	// large drug store chain
+    replace firmid = "11822" if ndccode == "11822"
  
 * Roxane Laboratories
-    replace firmid = 0054 if ndccode == 0054
+	// acquired by Hikma 
+	// already have same labeler code. 
+    replace firmid = "0054" if ndccode == "0054"
  
-* Rugby Laboratories
-    replace firmid = 0536 if ndccode == 0536
  
 * Sandoz
 	// part of Novartis.
@@ -326,58 +354,60 @@ sort labelername
     replace firmid = "0078" if ndccode == "0781"
  
 * Select Brand
-    replace firmid = 15127 if ndccode == 15127
+	// ID uncertain b/c of boring name.
+    replace firmid = "15127" if ndccode == "15127"
  
 * SpecGx
-    replace firmid = 0406 if ndccode == 0406
+	// mallinckrodt 
+    replace firmid = "0406" if ndccode == "0406"
  
 * Strategic Sourcing Services
-    replace firmid = 62011 if ndccode == 62011
+	// nothing findable.
+    replace firmid = "62011" if ndccode == "62011"
  
 * Sunmark
-    replace firmid = 49348 if ndccode == 49348
+	// probably independent. 
+    replace firmid = "49348" if ndccode == "49348"
  
 * TARGET Corporation
-    replace firmid = 11673 if ndccode == 11673
- 
-* Target Corporation
-    replace firmid = 11673 if ndccode == 11673
+	// large retailer
+    replace firmid = "11673" if ndccode == "11673"
  
 * Taro Pharmaceuticals USA
-    replace firmid = 51672 if ndccode == 51672
+	// acquired by SUN of India (2010) - no other appearances in this data.
+    replace firmid = "51672" if ndccode == "51672"
  
 * Teligent Pharma
-    replace firmid = 52565 if ndccode == 52565
+	// appears independent.  
+    replace firmid = "52565" if ndccode == "52565"
  
 * Teva Parenteral Medicines
-    replace firmid = 0703 if ndccode == 0703
+    replace firmid = "0093" if ndccode == "0703"
  
 * Teva Pharmaceuticals USA
-    replace firmid = 0093 if ndccode == 0093
+    replace firmid = "0093" if ndccode == "0093"
  
 * Topco Associates
-    replace firmid = 36800 if ndccode == 36800
+	// distributor to other pharmacies
+	// broadly speaking a purchasing group for a bunch of grocery chains and related.
+    replace firmid = "36800" if ndccode == "36800"
  
 * Unit Dose Services
-    replace firmid = 50436 if ndccode == 50436
+	// distributor
+    replace firmid = "50436" if ndccode == "50436"
  
 * Upsher-Smith Laboratories
-    replace firmid = 0832 if ndccode == 0832
+	// part of Sawai of Japan.  makes generics
+    replace firmid = "0832" if ndccode == "0832"
  
 * WALGREEN CO
-    replace firmid = 0363 if ndccode == 0363
- 
-* WALGREEN COMPANY
-    replace firmid = 0363 if ndccode == 0363
+	// large chain... 
+    replace firmid = "0363" if ndccode == "0363"
  
 * Wal-Mart Stores
-    replace firmid = 49035 if ndccode == 49035
+	// large chain 
+    replace firmid = "49035" if ndccode == "49035"
  
-* Walgreen Company
-    replace firmid = 0363 if ndccode == 0363
- 
-* Walgreens
-    replace firmid = 0363 if ndccode == 0363
  
 * West-Ward Pharmaceuticals Corp
 	// part of Hikma and was during this period
@@ -388,9 +418,11 @@ sort labelername
     replace firmid = "0054" if ndccode == "0143"
  
 * Wyeth Consumer Healthcare
-    replace firmid = 0031 if ndccode == 0031
+	// acquired by Pfizer in the start of 2009 (this data)
+    replace firmid = "0025" if ndccode == "0031"
  
 * Zydus Pharmaceuticals (USA)
-    replace firmid = 68382 if ndccode == 68382
+	// owned by Cadila of India.  
+    replace firmid = "68382" if ndccode == "68382"
  
 
