@@ -21,6 +21,20 @@ drop _merge
 * TODO: construct the prices p_hat here...
 
 
+* generate groups
+egen sub_check = rowtotal(codeine hydrocodone hydromorphone methadone morphine oxycodone tramadol other)
+replace other = 1 if sub_check == 0 
+egen substance = group(codeine hydrocodone hydromorphone methadone morphine oxycodone tramadol other)
+label define subs 1 "codeine" 2 "hydrocodone" 3 "hydromorphone" 4 "methadone" 5 "morphine" 6 "oxycodone" 7 "tramadol" 8 "other", replace
+label values substance subs
+
+	* need to reduce the number of packages or add "other"
+		* outside option has a package size  No - it should be 0
+		* there is a group w/ no package size.  Find and fix.  
+egen package = group(small_package medium_package large_package)
+label define packs  1 "small_package" 2 "medium_package" 3 "large_package" 4 "outside option", replace
+label values package packs
+
 * Construct some rows  
 	* Prices and MME
 foreach v1 of varlist avg_copay mme{
@@ -32,6 +46,8 @@ foreach v1 of varlist avg_copay mme{
 		save "${op_fp}mkt_year_`v1'.dta", replace
 	restore 
 }
+
+
 
 
 * square root of squared price differences:	
