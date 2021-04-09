@@ -588,18 +588,10 @@ end
 
 """
 GMM()
-
-Parallelizes the computation across processes
-
-maybe I want to take the shares, return a delta, put the error in an array?  whether shared or not...
-I think I want to:
-- load the empirical shares as a shared array
-- save the δ terms as a shared array 
-
-
+- W/ the error in hand, form the GMM objective.  
 
 """
-function GMM()
+function GMM(err::Array, Z::Array)
 
 
     return nothing 
