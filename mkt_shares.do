@@ -254,9 +254,10 @@ restore
 		drop c_ 
 		sort state yr ndc_code 
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/state_year_shares.csv", replace
+		save "${op_fp}state_year_shares.dta", replace
 	restore 
 	
-	
+
 	
 * features needed: state, year, ndc_code, price (avg copay), mme
 	* package size?  
@@ -265,7 +266,17 @@ restore
 	* one product is available in a single pill: pentazocine
 	preserve 
 		duplicates drop ndc_code, force 
-		keep yr ndc_code mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
+		keep yr ndc_code ndccode mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
 		sort ndc_code 
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/products_characteristics.csv", replace
+		save "${op_fp}just_characteristics.dta", replace
 	restore 
+	
+	
+	
+* for the instruments... need (markets) state, year, (characteristics) price, ingredient, package size, mme
+preserve  
+	keep state yr ndc_code ndccode mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
+	sort state yr ndc_code
+	save "${op_fp}diff_iv_inputs.dta", replace
+restore 
