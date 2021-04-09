@@ -1,4 +1,5 @@
 * Differentiation Instruments
+	* TODO - scale all of these at the end
 
 
 global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
@@ -17,23 +18,54 @@ merge m:1 labelerid using "${op_pr}product_ownership.dta"
 drop if _merge == 2 // NB outside option and composite inside goods don't match but need to be kept.
 drop _merge 
 
-
 * TODO: construct the prices p_hat here...
+
+
+* Construct some rows - there may be a better way to do this?  
+	* Prices
+foreach v1 of varlist avg_copay mme{
+	preserve 
+		keep state yr `v1' ndc_code 
+		bysort state yr: gen ctr = _n 
+		drop ndc_code 
+		reshape wide `v1', i(state yr) j(ctr)
+		save "${op_fp}mkt_year_`v1'.dta", replace
+	restore 
+}
 
 
 * square root of squared price differences:	
 	* sqrt( sum_j' (p_j - p_j')^2 )
+rename avg_copay price 
+	
+merge m:1 state yr using "${op_fp}mkt_year_avg_copay.dta", nogen
+gen p_accum =  0
+
+foreach v of varlist avg_copay*{
+	replace p_accum = p_accum + (price - `v')^2 if `v' != .
+}
+gen p_instrument = sqrt(p_accum)
 	
 	
+
 * square root of squared distance across a discrete category
 	* sqrt( sum_j' ( mme_j - mme_j')^2 )
+rename mme morphine_eq
+		
+merge m:1 state yr using "${op_fp}mkt_year_mme.dta", nogen
+gen mme_accum =  0
+
+foreach v of varlist mme*{
+	replace mme_accum = mme_accum + (morphine_eq - `v')^2 if `v' != .
+}
+gen mme_instrument = sqrt(mme_accum)
 	
 	
 * count of products w/ same discrete category - package size:
 		* sum_j' ind(package_size_j == package_size_j')
 		
 		
-* count of products w/ same active ingredient:
+* count of products w/ same discrete category - active ingredient:
 	* sum_j' ind(ingredient_j == ingredient_j')
 		
 * * * * Covariances * * * *
