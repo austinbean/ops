@@ -1,5 +1,8 @@
 * product characteristics
 /*
+
+EARLIER version - should use mkt_shares instead - creates shares and characteristics.  
+
 * What product properties?
 	* active ingredients CHECK 
 	* delivery method/dosage form OR maybe routename, but there's not much variation CHECK 
@@ -9,6 +12,9 @@
 
 	* Can the DEA opioid list be merged to this one, taking off the last two digits of that NDC code?
 * market share data given in national_market_shares.do - need to merge via NDC 
+
+
+
 */
 
 
