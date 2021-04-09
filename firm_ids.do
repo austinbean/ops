@@ -424,5 +424,8 @@ rename ndccode1 ndccode
 * Zydus Pharmaceuticals (USA)
 	// owned by Cadila of India.  
     replace firmid = "68382" if ndccode == "68382"
- 
+
+rename ndccode labelerid 
+duplicates drop labelerid, force // this is fine b/c dupes are variant spellings of the same name.  
+drop ndccode2 ndccode3 
 save "${op_pr}product_ownership.dta", replace
