@@ -20,7 +20,7 @@ https://www.nber.org/research/data/ndc-labeler-code-product-code-crosswalk
 global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
 global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 
-	use "/Users/austinbean/Desktop/programs/opioids/drug_characteristics.dta", clear
+	use "${op_pr}drug_characteristics.dta", clear
 	merge 1:1 ndc_code using "${op_pr}mme_by_ndc.dta"
 	drop if _merge ==2 
 	drop _merge 
@@ -425,4 +425,4 @@ rename ndccode1 ndccode
 	// owned by Cadila of India.  
     replace firmid = "68382" if ndccode == "68382"
  
-
+save "${op_pr}product_ownership.dta", replace
