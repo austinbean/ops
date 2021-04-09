@@ -4,16 +4,21 @@
 global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
 global op_pr "/Users/austinbean/Desktop/programs/opioids/"
 
-	use "${op_pr}drug_characteristics.dta", clear
-	merge 1:1 ndc_code using "${op_pr}mme_by_ndc.dta"
-	drop if _merge ==2 
-	drop _merge 
+
+	
+
+use "${op_fp}diff_iv_inputs.dta", clear	// this is the correct characteristics file, from mkt_shares.do
 	
 split ndccode, p("-")
 
-duplicates drop ndccode1 labelername, force
+rename ndccode1 labelerid
 
-* Need to add the product characteristics too.  
+merge m:1 labelerid using "${op_pr}product_ownership.dta" 
+drop if _merge == 2 // NB outside option and composite inside goods don't match but need to be kept.
+drop _merge 
+
+
+* TODO: construct the prices p_hat here...
 
 
 * square root of squared price differences:	
