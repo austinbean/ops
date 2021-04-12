@@ -146,17 +146,36 @@ gen cov_price_ingredient_instrument = 0
 gen cpi_accum
 	
 foreach v1 of numlist 1(1)`l1'{
-	replace cpi_accum = cpi_accum + (avg_copay`v1' - price)^2 if & package_size == package_size`v1' & avg_copay`v1' != . & package_size`v1' != .
+	replace cpi_accum = cpi_accum + (avg_copay`v1' - price)^2 if & substance == substance`v1' & avg_copay`v1' != . & substance`v1' != .
 }
 
 replace cov_price_ingredient_instrument = cpi_accum 
 	
 * Cov mme/package 
 	* sum_j' (mme_j - mme_j')^2 ind(package_size_j' - package_size_j)
+
+gen cov_mme_package_instrument = 0
+gen cmp_accum = 0
+
+foreach v1 of numlist 1(1)`l1'{
+	replace cmp_accum = cmp_accum + (morphine_eq - mme`v1')^2 if package_size == package_size`v1' & mme`v1' != . & package_size`v1' != .
+}
+
+replace cov_mme_package_instrument = cmp_accum 
+
+	
 	
 * Cov mme/ingredient 
 	* sum_j' (mme_j - mme_j')^2 ind(ingredient_j == ingredient_j')
 	
+gen cov_mme_ingredient_instrument = 0
+gen cmi_accum
+	
+foreach v1 of numlist 1(1)`l1'{
+	replace cmi_accum = cmi_accum + (morphine_eq - mme`v1')^2 if & package_size == package_size`v1' & avg_copay`v1' != . & package_size`v1' != .
+}
+
+replace cov_price_ingredient_instrument = cpi_accum 
 	
 	
 * * * * Int * * * *
