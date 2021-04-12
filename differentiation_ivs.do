@@ -1,6 +1,5 @@
 * Differentiation Instruments
-	* TODO - scale all of these at the end
-
+	* TODO - predicted price is required, I think?  
 
 global op_fp "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
 global op_pr "/Users/austinbean/Desktop/programs/opioids/"
@@ -25,12 +24,11 @@ drop _merge
 egen sub_check = rowtotal(codeine hydrocodone hydromorphone methadone morphine oxycodone tramadol other)
 replace other = 1 if sub_check == 0 
 egen substance = group(codeine hydrocodone hydromorphone methadone morphine oxycodone tramadol other)
-label define subs 1 "codeine" 2 "hydrocodone" 3 "hydromorphone" 4 "methadone" 5 "morphine" 6 "oxycodone" 7 "tramadol" 8 "other", replace
+label define subs 8 "codeine" 7 "hydrocodone" 6 "hydromorphone" 5 "methadone" 4 "morphine" 3 "oxycodone" 2 "tramadol" 1 "other", replace
 label values substance subs
 
 	* need to reduce the number of packages or add "other"
 		* outside option has a package size - it should be 0
-		* egen package group does not seem to follow the sort order of the variables at all... ?  
 egen op = rowtotal(*package)
 gen other_package = 0
 replace other_package = 1 if op == 0
@@ -131,7 +129,7 @@ gen cov_price_package_instrument = 0
 gen cpp_accum = 0
 
 foreach v1 of numlist 1(1)`l1'{
-	replace cpp_accum = cpp_accum + (avg_copay`v1' - price)^2 if package_size == package_size`v1' & avg_copay`v1' != . & package_size`v1' != .
+	replace cpp_accum = cpp_accum + (avg_copay`v1' - price)^2 if package == package`v1' & avg_copay`v1' != . & package`v1' != .
 }
 
 replace cov_price_package_instrument = cpp_accum 
@@ -143,10 +141,10 @@ replace cov_price_package_instrument = cpp_accum
 merge m:1 state yr using "${op_fp}mkt_year_substance.dta", nogen
 
 gen cov_price_ingredient_instrument = 0
-gen cpi_accum
+gen cpi_accum  = 0
 	
 foreach v1 of numlist 1(1)`l1'{
-	replace cpi_accum = cpi_accum + (avg_copay`v1' - price)^2 if & substance == substance`v1' & avg_copay`v1' != . & substance`v1' != .
+	replace cpi_accum = cpi_accum + (avg_copay`v1' - price)^2 if substance == substance`v1' & avg_copay`v1' != . & substance`v1' != .
 }
 
 replace cov_price_ingredient_instrument = cpi_accum 
@@ -158,7 +156,7 @@ gen cov_mme_package_instrument = 0
 gen cmp_accum = 0
 
 foreach v1 of numlist 1(1)`l1'{
-	replace cmp_accum = cmp_accum + (morphine_eq - mme`v1')^2 if package_size == package_size`v1' & mme`v1' != . & package_size`v1' != .
+	replace cmp_accum = cmp_accum + (morphine_eq - mme`v1')^2 if package == package`v1' & mme`v1' != . & package`v1' != .
 }
 
 replace cov_mme_package_instrument = cmp_accum 
@@ -169,26 +167,27 @@ replace cov_mme_package_instrument = cmp_accum
 	* sum_j' (mme_j - mme_j')^2 ind(ingredient_j == ingredient_j')
 	
 gen cov_mme_ingredient_instrument = 0
-gen cmi_accum
+gen cmi_accum  = 0
 	
 foreach v1 of numlist 1(1)`l1'{
-	replace cmi_accum = cmi_accum + (morphine_eq - mme`v1')^2 if & package_size == package_size`v1' & avg_copay`v1' != . & package_size`v1' != .
+	replace cmi_accum = cmi_accum + (morphine_eq - mme`v1')^2 if package == package`v1' & avg_copay`v1' != . & package`v1' != .
 }
 
-replace cov_price_ingredient_instrument = cpi_accum 
+replace cov_mme_ingredient_instrument = cmi_accum 
 	
 	
 * * * * Int * * * *
 
 * price 
 	* p_j sum_j' ( p_j' - p_j )
-	
+
 gen pp_accum =  0
 
 foreach v of varlist avg_copay*{
+	count if `v' == .
 	replace pp_accum = pp_accum + price*(price - `v') if `v' != .
 }
-gen p_prod_instrument = sqrt(pp_accum)
+gen p_prod_instrument = pp_accum
 	
 * mme 
 	* mme_j sum_j' (mme_j' - mme_j)
@@ -197,4 +196,22 @@ gen mmme_accum =  0
 foreach v of varlist mme*{
 	replace mmme_accum = mmme_accum + morphine_eq*(morphine_eq - `v') if `v' != .
 }
-gen mme_prod_instrument = sqrt(mmme_accum)
+gen mme_prod_instrument = mmme_accum
+
+
+* Collect 
+
+keep ndc_code state yr ndccode mme_prod_instrument p_prod_instrument cov_price_ingredient_instrument cov_mme_package_instrument cov_price_ingredient_instrument cov_price_package_instrument cov_price_mme_instrument sub_instrument package_instrument mme_instrument p_instrument
+
+
+* standardize within markets
+	* check if this is acceptable.   At least dividing by std surely is.  
+
+foreach vv of varlist mme_prod_instrument p_prod_instrument cov_price_ingredient_instrument cov_mme_package_instrument  cov_price_package_instrument cov_price_mme_instrument sub_instrument package_instrument mme_instrument p_instrument{
+	bysort state yr: egen s`vv' = std(`vv')
+}
+
+
+
+export delimited "${op_fp}differentiation_ivs.csv", replace
+save "${op_fp}differentiation_ivs.dta", replace
