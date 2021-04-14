@@ -18,6 +18,9 @@ drop if _merge == 2 // NB outside option and composite inside goods don't match 
 drop _merge 
 
 * TODO: construct the prices p_hat here...
+	* In the Gandhi/Houde paper this is p. 15 - 16
+	* Cites Reynaert/Verboven 2013
+
 
 
 * generate groups
@@ -212,6 +215,11 @@ foreach vv of varlist mme_prod_instrument p_prod_instrument cov_price_ingredient
 }
 
 
+sort yr state ndc_code 
 
-export delimited "${op_fp}differentiation_ivs.csv", replace
-save "${op_fp}differentiation_ivs.dta", replace
+keep yr state ndc_code ndccode smme_prod_instrument sp_prod_instrument scov_price_ingredient_instrument scov_mme_package_instrument scov_price_package_instrument scov_price_mme_instrument ssub_instrument spackage_instrument smme_instrument sp_instrument
+
+
+
+export delimited "${op_pr}differentiation_ivs.csv", replace
+save "${op_pr}differentiation_ivs.dta", replace
