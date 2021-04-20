@@ -602,7 +602,7 @@ end
 `Instruments`
 - These instruments are created in differentiation_ivs.do
 - They are organized by Year - State - NDC code 
-- All are normalized so they have mean 0 and variance 1.  
+- All are normalized so they have mean 0 and variance 1.  This is fine -  gives numerically identical results in the linear case.
 - There are ten instruments in this order:
 1.  "smme_prod_instrument", 
 2.  "sp_prod_instrument", 
