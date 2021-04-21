@@ -248,10 +248,13 @@ restore
 * market share outputs:
 	preserve 
 		keep state yr ndc_code market_share
+		* comment this out and check size 
+		/*
 		merge 1:1 state yr ndc_code using "${op_fp}all_ndc_state_year.dta"
 		replace market_share = c_ if  _merge == 2 // adding goods w/ zero market share.
 		drop _merge 
 		drop c_ 
+		*/
 		sort state yr ndc_code 
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/state_year_shares.csv", replace
 		save "${op_fp}state_year_shares.dta", replace
@@ -273,9 +276,15 @@ restore
 	restore 
 	
 	
-	
+
 * for the instruments... need (markets) state, year, (characteristics) price, ingredient, package size, mme
 preserve  
+	/*
+	merge 1:1 state yr ndc_code using "${op_fp}all_ndc_state_year.dta"
+	replace market_share = c_ if  _merge == 2 // adding goods w/ zero market share.
+	drop _merge 
+	drop c_ 
+	*/
 	keep state yr ndc_code ndccode mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
 	sort state yr ndc_code
 	save "${op_fp}diff_iv_inputs.dta", replace
