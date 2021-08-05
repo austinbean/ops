@@ -19,6 +19,8 @@ local whereami = "austinbean"
 global demo_filep = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/census_demographic_files/"
 global op_fp = "/Users/austinbean/Google Drive/Current Projects/HCCI Opioids/"
 global hcci_located  "/Users/`whereami'/Google Drive/Current Projects/HCCI Opioids/hcci_opioid_data/"
+global op_pr "/Users/austinbean/Desktop/programs/opioids/"
+
 di "${hcci_located}"
 
 use "${hcci_located}state_data/all_painmeds_by_state_year.dta", clear
