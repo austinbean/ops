@@ -156,7 +156,7 @@ mkt_chars = CSV.read("./state_demographics.csv", DataFrame)
 
 mkt_chars[!,:total_est_pop] = log.(mkt_chars[!,:total_est_pop])
 
-race_w = convert(Array{Float64,2}, mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]])
+race_w = convert(Array{Float64,2}, Matrix(mkt_chars[!, [:race_white, :race_afam, :race_nativeam, :race_asian, :race_pacisland, :race_other]]))
 
 disability_w = hcat(mkt_chars[!,:total_pop]-mkt_chars[!,:total_pop_w_disability], mkt_chars[!,:total_pop_w_disability])
 
@@ -197,7 +197,7 @@ st1 = ["AK", "AL", "AR", "AZ", "CA", "CO", "CT", "DC", "DE", "FL", "GA", "HI", "
 yr1 = [2009, 2010, 2011, 2012, 2013];
 mkt_ids = sort([Base.Iterators.product(st1,yr1)...], by = x-> (x[1], x[2]))
 
-pop_w = convert(Array{Float64,2}, mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]])
+pop_w = convert(Array{Float64,2}, Matrix(mkt_chars[!, [:pop_10_14, :pop_15_19, :pop_20_24, :pop_25_29, :pop_30_34, :pop_35_39, :pop_40_44, :pop_45_49, :pop_50_54, :pop_55_59, :pop_60_64, :pop_65_69, :pop_70_74, :pop_75_79, :pop_80_84, :pop_85_plus]]))
 
 pop = (OH(size(pop_w, 2)), MFW(pop_w))
 
@@ -205,7 +205,7 @@ N_individuals = 100
 
 N_characteristics = 3
 
-sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop)
+sim_individuals, shocks = PopMarkets(st1, N_individuals, N_characteristics, pop)
 
 # returns a 19 × 100 × 52 (characteristics × individuals × markets) array 
 
@@ -371,6 +371,9 @@ us.≈[0.7112345942275937  0.09625513525746869  0.09625513525746869]
 
 # TODO - approximately equals 1, but *very* approximately (w/in 0.1).  Should be able to do better.  
 # TODO - made 40% faster, but can I do more?   multithreading makes max_time worse, FYI.
+
+# TODO - problem currently is that shares and charcs have different dimensions.  Why?  Product characteristics
+now are too numerous.  
 """
 function Util(demographics, 
               shocks, 
@@ -809,6 +812,8 @@ Returns a collection given by the call to PopMarkets at the bottom:
 # Test:
 
 mkk = MKT(10,3)
+mkk[3] # the demographics across markets.  
+mkk[4] # shocks, so random coefficient draws 
 
 # TODO - how many markets?  State × year I think.  
 """
