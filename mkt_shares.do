@@ -273,6 +273,7 @@ restore
 		duplicates drop ndc_code, force 
 		keep yr ndc_code ndccode mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
 		sort ndc_code 
+			* NB: this line is loaded in blp.jl  
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/products_characteristics.csv", replace
 		save "${op_fp}just_characteristics.dta", replace
 	restore 
@@ -291,3 +292,11 @@ preserve
 	sort state yr ndc_code
 	save "${op_fp}diff_iv_inputs.dta", replace
 restore 
+
+
+
+// PyBLP setup.  
+	use "${op_fp}state_year_shares.dta", clear
+		// add the following file.  
+	use "${op_fp}just_characteristics.dta", clear
+	
