@@ -130,13 +130,13 @@ disability = (OH(size(disability_w, 2)), MFW(disability_w))
 
 Sampler(4, race, disability)
 
-# returns an Array{Float64,1} of eight elements, first six corresponding to race and last two to disability status.  
+# returns indexes corresponding to sampled element, so [5 1] has sampled fifth element of race, 1 of dis.  
 """
 function Sampler(n, x...)
     # generates ONE random individual according to the objects in the list x...
     outp = zeros(Float64, 0)
     for (i,el) in enumerate(x) 
-        outp = vcat(outp, sample(el[1], el[2][n])) # n is the index of the market sampling weights 
+        outp = vcat(outp, findmax(sample(el[1], el[2][n]))[2]) # n is the index of the market sampling weights 
     end 
     return outp 
 end 
@@ -166,7 +166,8 @@ disability = (OH(size(disability_w, 2)), MFW(disability_w))
 
 Population(100, 2, race, disability)
 
-# returns an 8 × 100 array, where each column is an "individual" represented as a race (first six elements) and a disability status (last two)
+# returns a 2 × 100 array, where each column is an "individual" represented as a race (first element) and a disability status (last).  
+Values correspond to indexes within category -> 5th element of race category.
 """
 function Population(S, n, x...)
     # for a market n, returns S random individuals given the objects in the list x 
@@ -207,7 +208,12 @@ N_characteristics = 3
 
 sim_individuals, shocks = PopMarkets(st1, N_individuals, N_characteristics, pop)
 
-# returns a 19 × 100 × 52 (characteristics × individuals × markets) array 
+# returns a 4 × 100 × 255 (characteristics × individuals × markets) array 
+
+new_arr = sim_individuals
+new_arr[2:end, :, :] += shocks
+
+# this obtains the right values.  
 
 """
 function PopMarkets(M, S, Ch, x...; years = 5)
@@ -815,7 +821,12 @@ mkk = MKT(10,3)
 mkk[3] # the demographics across markets.  
 mkk[4] # shocks, so random coefficient draws 
 
-# TODO - how many markets?  State × year I think.  
+# TODO - how many markets?  State × year I think. 
+
+# For PyBLP:
+
+sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
+
 """
 function MKT(N, C)
 
@@ -869,9 +880,11 @@ function MKT(N, C)
     # NB size of this is: ("features" = demographics + characteristics) × number of individuals × # of markets 
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
     sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
+    new_arr = sim_individuals 
+    new_arr[(end-2):end, :, :] += shocks
     # products w/ their characteristics.   
     # shares, when available. 
-    return params, common_params, sim_individuals, shocks 
+    return params, common_params, sim_individuals, shocks, new_arr 
 end 
 
 
