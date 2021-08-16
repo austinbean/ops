@@ -821,7 +821,7 @@ mkk = MKT(10,3)
 mkk[3] # the demographics across markets.  
 mkk[4] # shocks, so random coefficient draws 
 
-# TODO - how many markets?  State × year I think. 
+# do pop_w (ages) and male/female separately  
 
 # For PyBLP:
 
@@ -879,14 +879,155 @@ function MKT(N, C)
     params = InitialParams(3, pop, male, female, race, disability, education, labor, unemp, hhinc)
     # NB size of this is: ("features" = demographics + characteristics) × number of individuals × # of markets 
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
-    sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, pop, male, female, race, disability, education, labor, unemp, hhinc)
+    sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, male, race, disability, education, labor, unemp, hhinc)
     new_arr = sim_individuals 
     new_arr[(end-2):end, :, :] += shocks
+    trans_arr = zeros(Float64, size(new_arr,2), 2+size(new_arr,1), size(new_arr,3))
+    for i =1:size(new_arr,3)
+        trans_arr[:,3:end,i] .+= transpose(new_arr[:,:,i])
+        trans_arr[:,2,i] .+= 1/N_individuals 
+    end 
+    trans_arr = convert(Array{Union{String, Float64},3}, trans_arr)
+    # Add the market IDs.
+    labels = [(x,y) for x in states for y in [2009 2010 2011 2012 2013]]
+    @assert size(labels,1) == size(trans_arr,3)
+    for i = 1:size(trans_arr, 3)
+        for j = 1:100
+            trans_arr[j,1,i] = abbreviate(uppercase(labels[i][1]))*string(labels[i][2]) # fill in the names 
+        end 
+    end 
+    for i = 1:size(trans_arr,3)
+        for j = 3:size(trans_arr,2) # skip first (labels) and second (weights) columns 
+            trans_arr[:,j,i] = NormalizeVar(trans_arr[:,j,i])
+        end
+    end 
+    trans_arr = reduce(vcat, [trans_arr[:,:,k] for k =1:size(trans_arr,3)])
+    df = DataFrame(trans_arr, [:market_ids, :weights, :male, :race, :disability, :education, :labor, :unemp, :hhinc, :nodes0, :nodes1, :nodes2])
+
     # products w/ their characteristics.   
     # shares, when available. 
-    return params, common_params, sim_individuals, shocks, new_arr 
+    return params, common_params, sim_individuals, shocks, new_arr, trans_arr 
 end 
 
+
+
+function abbreviate(s)
+    if s == "ALABAMA"	
+        return "AL"
+    elseif s == "ALASKA"	
+        return "AK"
+    elseif s == "AMERICAN SAMOA"	
+        return "AS"
+    elseif s == "ARIZONA"	
+        return "AZ"
+    elseif s == "ARKANSAS"	
+        return "AR"
+    elseif s == "CALIFORNIA"	
+        return "CA"
+    elseif s == "COLORADO"	
+        return "CO"
+    elseif s == "CONNECTICUT"	
+        return "CT"
+    elseif s == "DELAWARE"	
+        return "DE"
+    elseif s == "DISTRICT OF COLUMBIA"	
+        return "DC"
+    elseif s == "FLORIDA"	
+        return "FL"
+    elseif s == "GEORGIA"	
+        return "GA"
+    elseif s == "GUAM"	
+        return "GU"
+    elseif s == "HAWAII"	
+        return "HI"
+    elseif s == "IDAHO"	
+        return "ID"
+    elseif s == "ILLINOIS"	
+        return "IL"
+    elseif s == "INDIANA"	
+        return "IN"
+    elseif s == "IOWA"	
+        return "IA"
+    elseif s == "KANSAS"	
+        return "KS"
+    elseif s == "KENTUCKY"	
+        return "KY"
+    elseif s == "LOUISIANA"	
+        return "LA"
+    elseif s == "MAINE"	
+        return "ME"
+    elseif s == "MARYLAND"	
+        return "MD"
+    elseif s == "MASSACHUSETTS"	
+        return "MA"
+    elseif s == "MICHIGAN"	
+        return "MI"
+    elseif s == "MINNESOTA"	
+        return "MN"
+    elseif s == "MISSISSIPPI"	
+        return "MS"
+    elseif s == "MISSOURI"	
+        return "MO"
+    elseif s == "MONTANA"	
+        return "MT"
+    elseif s == "NEBRASKA"	
+        return "NE"
+    elseif s == "NEVADA"	
+        return "NV"
+    elseif s == "NEW HAMPSHIRE"	
+        return "NH"
+    elseif s == "NEW JERSEY"	
+        return "NJ"
+    elseif s == "NEW MEXICO"	
+        return "NM"
+    elseif s == "NEW YORK"	
+        return "NY"
+    elseif s == "NORTH CAROLINA"	
+        return "NC"
+    elseif s == "NORTH DAKOTA"	
+        return "ND"
+    elseif s == "NORTHERN MARIANA IS"	
+        return "MP"
+    elseif s == "OHIO"	
+        return "OH"
+    elseif s == "OKLAHOMA"	
+        return "OK"
+    elseif s == "OREGON"	
+        return "OR"
+    elseif s == "PENNSYLVANIA"	
+        return "PA"
+    elseif s == "PUERTO RICO"	
+        return "PR"
+    elseif s == "RHODE ISLAND"	
+        return "RI"
+    elseif s == "SOUTH CAROLINA"	
+        return "SC"
+    elseif s == "SOUTH DAKOTA"	
+        return "SD"
+    elseif s == "TENNESSEE"	
+        return "TN"
+    elseif s == "TEXAS"	
+        return "TX"
+    elseif s == "UTAH"	
+        return "UT"
+    elseif s == "VERMONT"	
+        return "VT"
+    elseif s == "VIRGINIA"	
+        return "VA"
+    elseif s == "VIRGIN ISLANDS"	
+        return "VI"
+    elseif s == "WASHINGTON"	
+        return "WA"
+    elseif s == "WEST VIRGINIA"	
+        return "WV"
+    elseif s == "WISCONSIN"	
+        return "WI"
+    elseif s == "WYOMING"	
+        return "WY"
+    else 
+        throw("bad state", s)
+    end 
+end 
 
 
 """
