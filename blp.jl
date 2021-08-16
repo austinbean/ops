@@ -903,7 +903,7 @@ function MKT(N, C)
     end 
     trans_arr = reduce(vcat, [trans_arr[:,:,k] for k =1:size(trans_arr,3)])
     df = DataFrame(trans_arr, [:market_ids, :weights, :male, :race, :disability, :education, :labor, :unemp, :hhinc, :nodes0, :nodes1, :nodes2])
-
+    CSV.write("./py_blp_demographics.csv", df)
     # products w/ their characteristics.   
     # shares, when available. 
     return params, common_params, sim_individuals, shocks, new_arr, trans_arr 
