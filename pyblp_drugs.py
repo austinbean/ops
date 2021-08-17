@@ -7,7 +7,10 @@ import numpy as np
 product_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/pyblp_test_no_outside.csv")
 consumer_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/py_blp_demographics.csv")
 
-X1_formulation = pyblp.Formulation('0 + prices', absorb='C(ndc_code)')
+
+
+# Random coefficients formulation ... 
+X1_formulation = pyblp.Formulation('1 + prices')
 X2_formulation = pyblp.Formulation('1 + mme + package')
 product_formulations = (X1_formulation, X2_formulation)
 mc_integration = pyblp.Integration('monte_carlo', size=50, specification_options={'seed': 0})
