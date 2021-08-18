@@ -8,6 +8,7 @@ product_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/pyblp_tes
 consumer_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/py_blp_demographics.csv")
 
 
+# try the plain vanilla logit formulation first.  
 
 # Random coefficients formulation ... 
 X1_formulation = pyblp.Formulation('1 + prices')
