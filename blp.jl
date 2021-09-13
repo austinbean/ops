@@ -881,7 +881,7 @@ function MKT(N, C)
     # to index one person: sim_individuals[:, i, j] -> some person i in market j 
     sim_individuals, shocks = PopMarkets(states, N_individuals, N_characteristics, male, race, disability, education, labor, unemp, hhinc)
     new_arr = sim_individuals 
-    new_arr[(end-2):end, :, :] += shocks
+    new_arr[(end-N_characteristics+1):end, :, :] += shocks # isn't 2 if there are more shocks
     trans_arr = zeros(Float64, size(new_arr,2), 2+size(new_arr,1), size(new_arr,3))
     for i =1:size(new_arr,3)
         trans_arr[:,3:end,i] .+= transpose(new_arr[:,:,i])
@@ -902,7 +902,7 @@ function MKT(N, C)
         end
     end 
     trans_arr = reduce(vcat, [trans_arr[:,:,k] for k =1:size(trans_arr,3)])
-    df = DataFrame(trans_arr, [:market_ids, :weights, :male, :race, :disability, :education, :labor, :unemp, :hhinc, :nodes0, :nodes1, :nodes2])
+    df = DataFrame(trans_arr, [:market_ids, :weights, :male, :race, :disability, :education, :labor, :unemp, :hhinc, :nodes0, :nodes1, :nodes2, :nodes3, :nodes4, :nodes5, :nodes6])
     CSV.write("./py_blp_demographics.csv", df)
     # products w/ their characteristics.   
     # shares, when available. 
