@@ -44,15 +44,38 @@ product_formulations = (X1_formulation, X2_formulation)
 mc_integration = pyblp.Integration('monte_carlo', size=500, specification_options={'seed': 0})
 mc_problem = pyblp.Problem(product_formulations, product_data, integration=mc_integration)
 bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-4})
+    # skip solving this for the moment.  
 results1 = mc_problem.solve(sigma=np.eye(3), optimization=bfgs)
+
+'''
+Nonlinear Coefficient Estimates (Robust SEs in Parentheses):
+==========================================================
+Sigma:       prices             mme            package    
+-------  ---------------  ---------------  ---------------
+prices    +6.702476E-02                                   
+         (+7.480505E-03)                                  
+                                                          
+  mme     +0.000000E+00    -4.280262E-05                  
+                          (+6.031130E-01)                 
+                                                          
+package   +0.000000E+00    +0.000000E+00    +8.869733E-01 
+                                           (+3.711029E-02)
+==========================================================
+
+Beta Estimates (Robust SEs in Parentheses):
+==================================================================
+       1             prices             mme            package    
+---------------  ---------------  ---------------  ---------------
+ -3.106047E+00    -3.853283E-02    +1.084368E-02    +1.234579E+00 
+(+9.386053E-02)  (+7.435396E-03)  (+3.724808E-03)  (+2.105925E-02)
+==================================================================
+'''
+
 
     # iteration:   NOT USED YET.  Maybe not needed...
     # TODO - adjusting delta iterations bound 
+    # TODO - parallelize  
     # iteration = pyblp.Iteration('squarem', {'norm': np.linalg.norm, 'scheme': 1})
-
-agent_formulation = pyblp.Formulation('0 + male + hhinc + unemp')
-demo_problem = pyblp.Problem(product_formulations, product_data, agent_formulation, consumer_data)
-results2 = mc_problem.solve(sigma = np.eye(3), optimization=bfgs)
 
 
    # exact integration
