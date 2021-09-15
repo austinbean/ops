@@ -428,4 +428,5 @@ rename ndccode1 ndccode
 rename ndccode labelerid 
 duplicates drop labelerid, force // this is fine b/c dupes are variant spellings of the same name.  
 drop ndccode2 ndccode3 
+gen firm_merge = labelerid // these are unique in this file 
 save "${op_pr}product_ownership.dta", replace
