@@ -271,7 +271,14 @@ restore
 	* one product is available in a single pill: pentazocine
 	preserve 
 		duplicates drop ndc_code, force 
-		keep yr ndc_code ndccode mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package 
+		split ndccode, p("-")
+		rename ndccode1 firm_merge
+		merge m:1 firm_merge using "${op_pr}product_ownership.dta"
+		replace firmid = "0001" if ndc_code == "99999999998"
+		replace firmid = "0002" if ndc_code == "99999999999"
+		drop if _merge == 2 // unused labelers
+		drop _merge 
+		keep yr ndc_code ndccode mme avg_copay tramadol oxycodone morphine methadone hydromorphone hydrocodone codeine other small_package medium_package large_package firmid 
 		sort ndc_code 
 			* NB: this line is loaded in blp.jl  
 		export delimited using "/Users/austinbean/Desktop/programs/opioids/products_characteristics.csv", replace
@@ -299,4 +306,9 @@ restore
 	use "${op_fp}state_year_shares.dta", clear
 		// add the following file.  
 	use "${op_fp}just_characteristics.dta", clear
+		// and the instruments
+	use "${op_pr}differentiation_ivs.dta", clear
+	
+	
+	
 	
