@@ -18,7 +18,8 @@ bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-4})
 
 initial_sigma = np.eye(4)  
 initial_pi = np.array([[1, 0, 0], [0,1,0], [0,0,1], [1, 0, 0] ])
-results2 = demo_problem.solve(sigma=initial_sigma, pi=initial_pi, optimization=bfgs)
+with pyblp.parallel(4):
+    results2 = demo_problem.solve(sigma=initial_sigma, pi=initial_pi, optimization=bfgs)
 
 # sigma params are all estimated to be zero.
 
