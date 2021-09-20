@@ -18,7 +18,7 @@ X3_formulation = pyblp.Formulation('1 + mme + package')                  # suppl
 product_formulations = (X1_formulation, X2_formulation, X3_formulation)
 agent_formulation = pyblp.Formulation('0 + male + hhinc')  # + unemp
 supply_problem = pyblp.Problem(product_formulations, product_data, agent_formulation, consumer_data)
-bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-8})
+bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-12})
 initial_sigma = np.eye(4)        # length X2 
 initial_pi = np.random.rand(4,2) # length X2 x length agent_formulation
 iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 50000})

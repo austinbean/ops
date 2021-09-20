@@ -14,7 +14,7 @@ X2_formulation = pyblp.Formulation('1 + prices + mme + package')         # non-l
 product_formulations = (X1_formulation, X2_formulation)
 agent_formulation = pyblp.Formulation('0 + male + hhinc + unemp')
 demo_problem = pyblp.Problem(product_formulations, product_data, agent_formulation, consumer_data)
-bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-8})
+bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-12})
 iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 50000})
 
 initial_sigma = np.eye(4)  
