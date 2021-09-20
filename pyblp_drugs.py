@@ -8,10 +8,6 @@ product_data = pd.read_csv("./pyblp_test_no_outside.csv")
 consumer_data = pd.read_csv("./py_blp_demographics.csv")
 
 
-# TODO - 
-# 1 higher number of iterations on delta    
-# 2 parallel over markets  
-
 # try the plain vanilla logit formulation first.  
     # product_data has the demand instruments
 
@@ -43,42 +39,12 @@ X2_formulation = pyblp.Formulation('0 + prices + mme + package')
 product_formulations = (X1_formulation, X2_formulation) 
 mc_integration = pyblp.Integration('monte_carlo', size=500, specification_options={'seed': 0})
 mc_problem = pyblp.Problem(product_formulations, product_data, integration=mc_integration)
-bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-4})
+bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-8})
 iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 10000})
 
-    # skip solving this for the moment.  
-with pyblp.parallel(4):
+with pyblp.parallel(10):
     results1 = mc_problem.solve(sigma=np.eye(3), optimization=bfgs, iteration=iteration_options)
 
-'''
-Nonlinear Coefficient Estimates (Robust SEs in Parentheses):
-==========================================================
-Sigma:       prices             mme            package    
--------  ---------------  ---------------  ---------------
-prices    +6.702476E-02                                   
-         (+7.480505E-03)                                  
-                                                          
-  mme     +0.000000E+00    -4.280262E-05                  
-                          (+6.031130E-01)                 
-                                                          
-package   +0.000000E+00    +0.000000E+00    +8.869733E-01 
-                                           (+3.711029E-02)
-==========================================================
-
-Beta Estimates (Robust SEs in Parentheses):
-==================================================================
-       1             prices             mme            package    
----------------  ---------------  ---------------  ---------------
- -3.106047E+00    -3.853283E-02    +1.084368E-02    +1.234579E+00 
-(+9.386053E-02)  (+7.435396E-03)  (+3.724808E-03)  (+2.105925E-02)
-==================================================================
-'''
-
-
-    # iteration:   NOT USED YET.  Maybe not needed...
-    # TODO - adjusting delta iterations bound 
-    # TODO - parallelize  
-    # iteration = pyblp.Iteration('squarem', {'norm': np.linalg.norm, 'scheme': 1})
 
 
    # exact integration
