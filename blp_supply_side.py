@@ -21,7 +21,7 @@ supply_problem = pyblp.Problem(product_formulations, product_data, agent_formula
 bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-8})
 initial_sigma = np.eye(4)        # length X2 
 initial_pi = np.random.rand(4,2) # length X2 x length agent_formulation
-iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 10000})
+iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 50000})
 with pyblp.parallel(10):
     results = supply_problem.solve(sigma=initial_sigma,pi=initial_pi, costs_bounds=(0.001, None), optimization=bfgs, iteration=iteration_options)
 

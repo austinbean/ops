@@ -40,7 +40,7 @@ product_formulations = (X1_formulation, X2_formulation)
 mc_integration = pyblp.Integration('monte_carlo', size=500, specification_options={'seed': 0})
 mc_problem = pyblp.Problem(product_formulations, product_data, integration=mc_integration)
 bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-8})
-iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 10000})
+iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 50000})
 
 with pyblp.parallel(10):
     results1 = mc_problem.solve(sigma=np.eye(3), optimization=bfgs, iteration=iteration_options)
