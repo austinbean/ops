@@ -8,8 +8,8 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-product_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/pyblp_test_no_outside.csv")
-consumer_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/py_blp_demographics.csv")
+product_data = pd.read_csv("./pyblp_test_no_outside.csv")
+consumer_data = pd.read_csv("./py_blp_demographics.csv")
 
 
 X1_formulation = pyblp.Formulation('1 + mme')                            # linear / taking prices out of this line

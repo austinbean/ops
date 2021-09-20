@@ -4,8 +4,8 @@ import pyblp
 import pandas as pd 
 import numpy as np
     # "_no_outside" does not have an outside option, so shares sum to much less than 1.
-product_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/pyblp_test_no_outside.csv")
-consumer_data = pd.read_csv("/Users/austinbean/Desktop/programs/opioids/py_blp_demographics.csv")
+product_data = pd.read_csv("./pyblp_test_no_outside.csv")
+consumer_data = pd.read_csv("./py_blp_demographics.csv")
 
 
 # TODO - 
