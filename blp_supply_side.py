@@ -16,14 +16,19 @@ X1_formulation = pyblp.Formulation('1 + mme')                            # linea
 X2_formulation = pyblp.Formulation('1 + prices + mme + package')         # non-linear
 X3_formulation = pyblp.Formulation('1 + mme + package')                  # supply-side
 product_formulations = (X1_formulation, X2_formulation, X3_formulation)
-agent_formulation = pyblp.Formulation('0 + male + hhinc')  # + unemp
+agent_formulation = pyblp.Formulation('0 + male + hhinc + unemp')  #
 supply_problem = pyblp.Problem(product_formulations, product_data, agent_formulation, consumer_data)
-bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-12})
+bfgs = pyblp.Optimization('l-bfgs-b', {'gtol': 1e-12})
+
 initial_sigma = np.eye(4)        # length X2 
-initial_pi = np.random.rand(4,2) # length X2 x length agent_formulation
-iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 50000})
+sigma_lower = (-3)*np.eye(4)
+sigma_upper = 3*np.eye(4)
+
+initial_pi = np.random.rand(4,3) # length X2 x length agent_formulation
+
+iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 100000})
 with pyblp.parallel(10):
-    results = supply_problem.solve(sigma=initial_sigma,pi=initial_pi, costs_bounds=(0.001, None), optimization=bfgs, iteration=iteration_options)
+    results = supply_problem.solve(sigma=initial_sigma, sigma_bounds=(sigma_lower,sigma_upper), pi=initial_pi, costs_bounds=(0.001, None), optimization=bfgs, iteration=iteration_options)
 
 costs = results.compute_costs()
 markups = results.compute_markups(costs=costs)

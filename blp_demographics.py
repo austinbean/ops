@@ -2,7 +2,7 @@
 import pyblp
 import pandas as pd
 import numpy as np 
-import matplotlib.pyplot as plt
+
 
 # "_no_outside" does not have an outside option, so shares sum to much less than 1.
 product_data = pd.read_csv("./pyblp_test_no_outside.csv")
@@ -14,13 +14,15 @@ X2_formulation = pyblp.Formulation('1 + prices + mme + package')         # non-l
 product_formulations = (X1_formulation, X2_formulation)
 agent_formulation = pyblp.Formulation('0 + male + hhinc + unemp')
 demo_problem = pyblp.Problem(product_formulations, product_data, agent_formulation, consumer_data)
-bfgs = pyblp.Optimization('bfgs', {'gtol': 1e-12})
-iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 50000})
+bfgs = pyblp.Optimization('l-bfgs-b', {'gtol': 1e-6})
+iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 100000})
 
-initial_sigma = np.eye(4)  
+initial_sigma = np.eye(4) 
+sigma_lower = (-3)*np.eye(4)
+sigma_upper = 3*np.eye(4)
 initial_pi = np.array([[1, 0, 0], [0,1,0], [0,0,1], [1, 0, 0] ])
 with pyblp.parallel(10):
-    results2 = demo_problem.solve(sigma=initial_sigma, pi=initial_pi, optimization=bfgs, iteration=iteration_options)
+    results2 = demo_problem.solve(sigma=initial_sigma, sigma_bounds=(sigma_lower, sigma_upper), pi=initial_pi, optimization=bfgs, iteration=iteration_options)
 
 # sigma params are all estimated to be zero.
 
