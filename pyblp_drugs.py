@@ -39,7 +39,7 @@ X2_formulation = pyblp.Formulation('0 + prices + mme + package')
 product_formulations = (X1_formulation, X2_formulation) 
 mc_integration = pyblp.Integration('monte_carlo', size=500, specification_options={'seed': 0})
 mc_problem = pyblp.Problem(product_formulations, product_data, integration=mc_integration)
-l_bfg = pyblp.Optimization('l-bfgs-b',method_options={'gtol': 1e-6} )
+l_bfg = pyblp.Optimization('l-bfgs-b',method_options={'gtol': 1e-14} )
 iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evaluations': 100000})
 
 # here add sigma_lower and sigma_upper bounds
