@@ -21,7 +21,7 @@ initial_sigma = np.eye(4)
 sigma_lower = (-3)*np.eye(4)
 sigma_upper = 3*np.eye(4)
 initial_pi = np.array([[1, 0, 0,0,0], [0,1,1,1,0], [0,1,1,0,0], [1,0,0,0,1]])
-beta_init = [0]
+beta_init = [-20]
 beta_lower = [-5000]
 beta_upper = [-1]
 with pyblp.parallel(10):
