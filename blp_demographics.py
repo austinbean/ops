@@ -20,7 +20,7 @@ iteration_options = pyblp.Iteration(method='squarem', method_options={'max_evalu
 initial_sigma = np.eye(4) 
 sigma_lower = (-3)*np.eye(4)
 sigma_upper = 3*np.eye(4)
-initial_pi = np.array([[1, 0, 0,0,0], [0,1,1,1,0], [0,1,1,0,0], [1,0,0,0,1] ])
+initial_pi = np.array([[1, 0, 0,0,0], [0,1,1,1,0], [0,1,1,0,0], [1,0,0,0,1]])
 with pyblp.parallel(10):
     results2 = demo_problem.solve(sigma=initial_sigma, sigma_bounds=(sigma_lower, sigma_upper), pi=initial_pi, optimization=bfgs, iteration=iteration_options)
 
