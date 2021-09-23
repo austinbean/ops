@@ -21,8 +21,11 @@ initial_sigma = np.eye(4)
 sigma_lower = (-3)*np.eye(4)
 sigma_upper = 3*np.eye(4)
 initial_pi = np.array([[1, 0, 0,0,0], [0,1,1,1,0], [0,1,1,0,0], [1,0,0,0,1]])
+beta_init = [0]
+beta_lower = [-5000]
+beta_upper = [-1]
 with pyblp.parallel(10):
-    results2 = demo_problem.solve(sigma=initial_sigma, sigma_bounds=(sigma_lower, sigma_upper), pi=initial_pi, optimization=bfgs, iteration=iteration_options)
+    results2 = demo_problem.solve(sigma=initial_sigma, sigma_bounds=(sigma_lower, sigma_upper),beta=beta_init, beta_bounds=(beta_lower,beta_upper), pi=initial_pi, optimization=bfgs, iteration=iteration_options)
 
 
 elasticities = results2.compute_elasticities()
